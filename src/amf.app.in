@@ -1,0 +1,11 @@
+%% -*-Erlang-*-
+{application, amf,
+ [{description, "Action Message Format Library"},
+  {vsn, "@VERSION@"},
+  {modules, [amf, amf0, amf3, 'AbstractMessage', 'AsyncMessage',
+	     'CommandMessage', 'AcknowledgeMessage']},
+  {registered, []},
+  {applications, [kernel, stdlib]},
+  {env, []}
+ ]}.
+%% vim: set filetype=erlang:
