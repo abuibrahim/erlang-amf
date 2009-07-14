@@ -11,4 +11,5 @@ ERLCFLAGS += -W
 $(beam_DATA): $(dist_hrl_DATA)
 
 .erl.beam:
-	$(ERLC) $(ERLCFLAGS) $<
+	@echo "Compiling $<..."
+	@$(ERLC) $(ERLCFLAGS) $<

@@ -413,7 +413,8 @@ uninstall-am: uninstall-beamDATA uninstall-dist_erlDATA \
 $(beam_DATA): $(dist_hrl_DATA)
 
 .erl.beam:
-	$(ERLC) $(ERLCFLAGS) $<
+	@echo "Compiling $<..."
+	@$(ERLC) $(ERLCFLAGS) $<
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
