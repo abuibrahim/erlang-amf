@@ -1,0 +1,15 @@
+2009-07-22  Ruslan Babayev  <ruslan@babayev.com>
+
+	* src/amf3.erl (decode_as_reference): New function.
+	(decode): Use decode_as_reference.
+	(decode_string): Use decode_as_reference.
+	(decode_bytearray): Use decode_as_reference.
+	(decode_trait): Use the more readable IS_SET macro.
+	(external_module): Throw {unknown_class, Class}.
+	(encode): Replace `case' with `try'.
+	(encode_uint29): Replace `bad_range' with `badrange'.
+	(encode_string): Replace `case' with `try'.
+	(encode_bytearray): Replace `case' with `try'.
+	(encode_as_reference): Return reference or throw noref.
+	(encode_trait): Replace `case' with `try'.
+

@@ -20,6 +20,8 @@
 
 -record(trait, {class, is_dynamic, is_externalizable, property_names}).
 
+-define(IS_SET(Byte, Flag), ((Byte) band Flag) == Flag).
+
 decode(Data) ->
     Empty = gb_trees:empty(),
     {AMF, Rest, _, _, _} = decode(Data, Empty, Empty, Empty),
@@ -45,51 +47,46 @@ decode(<<?XMLDOC, Data/binary>>, Strings, Objects, Traits) ->
     {String, Rest, Strings1} = decode_string(Data, Strings),
     {{xmldoc, String}, Rest, Strings1, Objects, Traits};
 decode(<<?DATE, Data/binary>>, Strings, Objects, Traits) ->
-    {Ref, Rest} = decode_uint29(Data),
-    case Ref band 1 of
-	1 ->
-	    <<TS:64/float, Rest1/binary>> = Rest,
+    try decode_as_reference(Data, Objects) of
+	{Date, Rest} ->
+	    {Date, Rest, Strings, Objects, Traits}
+    catch
+	{inline, _, <<TS:64/float, Rest/binary>>} ->
 	    Date = {date, TS, 0},
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Date, Objects),
-	    {Date, Rest1, Strings, Objects1, Traits};
-	0 ->
-	    Date = gb_trees:get(Ref bsr 1, Objects),
-	    {Date, Rest, Strings, Objects, Traits}
+	    {Date, Rest, Strings, Objects1, Traits}
     end;
 decode(<<?ARRAY, Data/binary>>, Strings, Objects, Traits) ->
-    {Ref, Rest} = decode_uint29(Data),
-    case Ref band 1 of
-	1 ->
+    try decode_as_reference(Data, Objects) of
+	{Array, Rest} ->
+	    {Array, Rest, Strings, Objects, Traits}
+    catch
+	{inline, Len, Rest} ->
 	    {Associative, Rest1, Strings1, Objects1, Traits1} =
 		decode_assoc(Rest, Strings, Objects, Traits, []),
-	    Len = Ref bsr 1,
 	    {Dense, Rest2, Strings2, Objects2, Traits2} =
 		decode_dense(Len, Rest1, Strings1, Objects1, Traits1, []),
 	    Array = Associative ++ Dense,
 	    Key = gb_trees:size(Objects2),
 	    Objects3 = gb_trees:insert(Key, Array, Objects2),
-	    {Array, Rest2, Strings2, Objects3, Traits2};
-	0 ->
-	    Array = gb_trees:get(Ref bsr 1, Objects),
-	    {Array, Rest, Strings, Objects, Traits}
+	    {Array, Rest2, Strings2, Objects3, Traits2}
     end;
 decode(<<?OBJECT, Data/binary>>, Strings, Objects, Traits) ->
-    {Ref, Rest} = decode_uint29(Data),
-    case Ref band 1 of
-	1 ->
+    try decode_as_reference(Data, Objects) of
+	{Object, Rest} ->
+	    {Object, Rest, Strings, Objects, Traits}
+    catch
+	{inline, Len, Rest} ->
 	    {Trait, Rest1, Strings1, Traits1} =
-		decode_trait(Ref bsr 1, Rest, Strings, Traits),
+		decode_trait(Len, Rest, Strings, Traits),
 	    Object0 = #amf_object{class = Trait#trait.class},
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object0, Objects),
 	    {Object, Rest2, Strings2, Objects2, Traits2} =
 		decode_object(Trait, Rest1, Strings1, Objects1, Traits1),
 	    Objects3 = gb_trees:update(Key, Object, Objects2),
-	    {Object, Rest2, Strings2, Objects3, Traits2};
-	0 ->
-	    Object = gb_trees:get(Ref bsr 1, Objects),
-	    {Object, Rest, Strings, Objects, Traits}
+	    {Object, Rest2, Strings2, Objects3, Traits2}
     end;
 decode(<<?XML, Data/binary>>, Strings, Objects, Traits) ->
     {String, Rest, Strings1} = decode_string(Data, Strings),
@@ -97,6 +94,14 @@ decode(<<?XML, Data/binary>>, Strings, Objects, Traits) ->
 decode(<<?BYTEARRAY, Data/binary>>, Strings, Objects, Traits) ->
     {ByteArray, Rest, Objects1} =  decode_bytearray(Data, Objects),
     {ByteArray, Rest, Strings, Objects1, Traits}.
+
+decode_as_reference(Bin, Tree) ->
+    case decode_uint29(Bin) of
+	{Int, Rest} when ?IS_SET(Int, 1) ->
+	    throw({inline, Int bsr 1, Rest});
+	{Int, Rest} ->
+	    {gb_trees:get(Int bsr 1, Tree), Rest}
+    end.
 
 decode_uint29(Data) ->
     decode_uint29(Data, 0, 0).
@@ -117,27 +122,25 @@ uint29_to_int29(UInt29) ->
     end.
 
 decode_string(Data, Strings) ->
-    {Ref, Rest} = decode_uint29(Data),
-    case Ref band 1 of
-	1 ->
-	    Len = Ref bsr 1,
+    try decode_as_reference(Data, Strings) of
+	{String, Rest} ->
+	    {String, Rest, Strings}
+    catch
+	{inline, Len, Rest} ->
 	    <<String:Len/binary, Rest1/binary>> = Rest,
-	    {String, Rest1, insert_string(String, Strings)};
-	0 ->
-	    {gb_trees:get(Ref bsr 1, Strings), Rest, Strings}
+	    {String, Rest1, insert_string(String, Strings)}
     end.
 
 decode_bytearray(Data, Objects) ->
-    {Ref, Rest} = decode_uint29(Data),
-    case Ref band 1 of
-	1 ->
-	    Len = Ref bsr 1,
+    try decode_as_reference(Data, Objects) of
+	{ByteArray, Rest} ->
+	    {ByteArray, Rest, Objects}
+    catch
+	{inline, Len, Rest} ->
 	    <<Bytes:Len/binary, Rest1/binary>> = Rest,
 	    Key = gb_trees:size(Objects),
 	    ByteArray = {bytearray, Bytes},
-	    {ByteArray, Rest1, gb_trees:insert(Key, ByteArray, Objects)};
-	0 ->
-	    {gb_trees:get(Ref bsr 1, Objects), Rest, Objects}
+	    {ByteArray, Rest1, gb_trees:insert(Key, ByteArray, Objects)}
     end.
 
 decode_assoc(Data, Strings, Objects, Traits, Acc) ->
@@ -164,8 +167,8 @@ decode_trait(Ref, Data, Strings, Traits) ->
 		decode_strings(Ref bsr 3, Rest, Strings1, []),
 	    PropertyNames2 = lists:map(fun binary_to_atom/1, PropertyNames),
 	    Trait = #trait{class = ClassName,
-			   is_externalizable = ((Ref band 2) == 2),
-			   is_dynamic = ((Ref band 4) == 4),
+			   is_externalizable = ?IS_SET(Ref, 2),
+			   is_dynamic = ?IS_SET(Ref, 4),
 			   property_names = PropertyNames2},
 	    Key = gb_trees:size(Traits),
 	    Traits1 = gb_trees:insert(Key, Trait, Traits),
@@ -216,7 +219,7 @@ external_module(<<"DSA">>) -> 'AsyncMessage';
 external_module(<<"DSC">>) -> 'CommandMessage';
 external_module(<<"DSK">>) -> 'AcknowledgeMessage';
 external_module(Class) ->
-    throw({'EXIT', list_to_binary([Class, "not externalized"])}).
+    throw({unknown_class, Class}).
 
 binary_to_atom(Bin) when is_binary(Bin) ->
     list_to_atom(binary_to_list(Bin)).
@@ -246,19 +249,21 @@ encode({xmldoc, String}, Strings, Objects, Traits) ->
     {Bin, Strings1} = encode_string(String, Strings),
     {<<?XMLDOC, Bin/binary>>, Strings1, Objects, Traits};
 encode({date, TS, TZ}, Strings, Objects, Traits) ->
-    case encode_as_reference({date, TS, TZ}, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?DATE, Bin/binary>>, Strings, Objects, Traits};
-	inline ->
+    try encode_as_reference({date, TS, TZ}, gb_trees:iterator(Objects)) of
+	Bin ->
+	    {<<?DATE, Bin/binary>>, Strings, Objects, Traits}
+    catch
+	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, {date, TS, TZ}, Objects),
 	    {<<?DATE, 1, TS:64/float>>, Strings, Objects1, Traits}
     end;
 encode(Array, Strings, Objects, Traits) when is_list(Array) ->
-    case encode_as_reference(Array, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?ARRAY, Bin/binary>>, Strings, Objects, Traits};
-	inline ->
+    try encode_as_reference(Array, gb_trees:iterator(Objects)) of
+	Bin ->
+	    {<<?ARRAY, Bin/binary>>, Strings, Objects, Traits}
+    catch
+	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Array, Objects),
 	    Split = fun({K, V}, {Assoc, Dense}) when is_binary(K) ->
@@ -277,10 +282,11 @@ encode(Array, Strings, Objects, Traits) when is_list(Array) ->
 	    {Bin, Strings3, Objects3, Traits3}
     end;
 encode(Object, Strings, Objects, Traits) when is_record(Object, amf_object) ->
-    case encode_as_reference(Object, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?OBJECT, Bin/binary>>, Strings, Objects, Traits};
-	inline ->
+    try encode_as_reference(Object, gb_trees:iterator(Objects)) of
+	Bin ->
+	    {<<?OBJECT, Bin/binary>>, Strings, Objects, Traits}
+    catch
+	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
 	    #amf_object{class = Class, members = Members} = Object,
@@ -345,23 +351,25 @@ encode_uint29(I) when I >= 16#00200000, I =< 16#1FFFFFFF ->
     X4 = I band 16#FF,
     <<X1, X2, X3, X4>>;
 encode_uint29(_) ->
-    throw(bad_range).
+    throw(badrange).
 
 encode_string(String, Strings) ->
-    case encode_as_reference(String, gb_trees:iterator(Strings)) of
-	{ok, Bin} ->
-	    {Bin, Strings};
-	inline ->
+    try encode_as_reference(String, gb_trees:iterator(Strings)) of
+	Bin ->
+	    {Bin, Strings}
+    catch
+	noref ->
 	    Strings1 = insert_string(String, Strings),
 	    Ref = encode_uint29(size(String) bsl 1 bor 1),
 	    {<<Ref/binary, String/binary>>, Strings1}
     end.
 
 encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
-    case encode_as_reference(ByteArray, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {Bin, Objects};
-	inline ->
+    try encode_as_reference(ByteArray, gb_trees:iterator(Objects)) of
+	Bin ->
+	    {Bin, Objects}
+    catch
+	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, ByteArray, Objects),
 	    Ref = encode_uint29(size(Bytes) bsl 1 bor 1),
@@ -369,14 +377,14 @@ encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
     end.
 
 encode_as_reference(_Value, []) ->
-    inline;
+    throw(noref);
 encode_as_reference(Value, Iterator0) ->
     case gb_trees:next(Iterator0) of
 	{Key, Value, _} when is_record(Value, trait) ->
-	    %% Obj is inline, Trait is a 27bit reference.
-	    {ok, encode_uint29(Key bsl 2 bor 1)};
+	    % Obj is inline, Trait is a 27bit reference.
+	    encode_uint29(Key bsl 2 bor 1);
 	{Key, Value, _} ->
-	    {ok, encode_uint29(Key bsl 1)};
+	    encode_uint29(Key bsl 1);
 	{_, _, Iterator1} ->
 	    encode_as_reference(Value, Iterator1)
     end.
@@ -400,10 +408,11 @@ encode_dense([Element | Rest], Acc, Strings, Objects, Traits) ->
     encode_dense(Rest, [Bin | Acc], Strings1, Objects1, Traits1).
 
 encode_trait(Trait, Strings, Traits) ->
-    case encode_as_reference(Trait, gb_trees:iterator(Traits)) of
-	{ok, Bin} ->
-	    {Bin, Strings, Traits};
-	inline ->
+    try encode_as_reference(Trait, gb_trees:iterator(Traits)) of
+	Bin ->
+	    {Bin, Strings, Traits}
+    catch
+	noref ->
 	    Key = gb_trees:size(Traits),
 	    Traits1 = gb_trees:insert(Key, Trait, Traits),
 	    {Class, Strings1} = encode_string(Trait#trait.class, Strings),
