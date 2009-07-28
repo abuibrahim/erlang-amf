@@ -376,8 +376,6 @@ encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
 	    {<<Ref/binary, Bytes/binary>>, Objects1}
     end.
 
-encode_as_reference(_Value, []) ->
-    throw(noref);
 encode_as_reference(Value, Iterator0) ->
     case gb_trees:next(Iterator0) of
 	{Key, Value, _} when is_record(Value, trait) ->
@@ -386,7 +384,9 @@ encode_as_reference(Value, Iterator0) ->
 	{Key, Value, _} ->
 	    encode_uint29(Key bsl 1);
 	{_, _, Iterator1} ->
-	    encode_as_reference(Value, Iterator1)
+	    encode_as_reference(Value, Iterator1);
+	none ->
+	    throw(noref)
     end.
 
 encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits) ->

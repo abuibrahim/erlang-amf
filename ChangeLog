@@ -1,3 +1,8 @@
+2009-07-28  Ruslan Babayev  <ruslan@redwoodsys.com>
+
+	* src/amf3.erl (encode_as_reference): Check the return value of
+	gb_trees:next for none rather than rely on the last iterator being [].
+
 2009-07-22  Ruslan Babayev  <ruslan@babayev.com>
 
 	* src/amf3.erl (decode_as_reference): New function.
