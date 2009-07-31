@@ -80,16 +80,13 @@ decode_members(<<0:16, ?OBJECTEND, Rest/binary>>, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
 decode_members(<<L:16, Key:L/binary, Data/binary>>, Acc, Objects) ->
     {Value, Rest, Objects1} = decode(Data, Objects),
-    decode_members(Rest, [{binary_to_atom(Key), Value} | Acc], Objects1).
+    decode_members(Rest, [{binary_to_atom(Key, utf8), Value} | Acc], Objects1).
 
 decode_array(0, Rest, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
 decode_array(Size, Data, Acc, Objects) ->
     {Element, Rest, Objects1} = decode(Data, Objects),
     decode_array(Size - 1, Rest, [Element | Acc], Objects1). 
-
-binary_to_atom(Bin) when is_binary(Bin) ->
-    list_to_atom(binary_to_list(Bin)).
 
 encode(AMF) ->
     {Bin, _Objects} = encode(AMF, gb_trees:empty()),
@@ -168,7 +165,7 @@ encode(List, Objects) when is_list(List) ->
 encode_members([], Acc, Objects) ->
     {list_to_binary(lists:reverse([<<0:16, ?OBJECTEND>> | Acc])), Objects};
 encode_members([{Key, Val} | Rest], Acc, Objects) ->
-    KeyBin = to_binary(Key),
+    KeyBin = atom_to_binary(Key, utf8),
     {ValBin, Objects1} = encode(Val, Objects),
     Bin = <<(size(KeyBin)):16, KeyBin/binary, ValBin/binary>>,
     encode_members(Rest, [Bin | Acc], Objects1).
@@ -189,7 +186,3 @@ encode_as_reference(Value, Iterator0) ->
 	    encode_as_reference(Value, Iterator1)
     end.
 
-to_binary(Bin) when is_binary(Bin) ->
-    Bin;
-to_binary(Atom) when is_atom(Atom) ->
-    list_to_binary(atom_to_list(Atom)).

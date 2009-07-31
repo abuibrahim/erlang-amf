@@ -147,9 +147,10 @@ decode_assoc(Data, Strings, Objects, Traits, Acc) ->
     case decode_string(Data, Strings) of
 	{<<>>, Rest, Strings1} ->
 	    {lists:reverse(Acc), Rest, Strings1, Objects, Traits};
-	{Key, Rest, Strings1} ->
+	{KeyBin, Rest, Strings1} ->
 	    {Value, Rest1, S2, O2, T2} =
 		decode(Rest, Strings1, Objects, Traits),
+	    Key = binary_to_atom(KeyBin, utf8),
 	    decode_assoc(Rest1, S2, O2, T2, [{Key, Value} | Acc])
     end.
 
@@ -164,12 +165,11 @@ decode_trait(Ref, Data, Strings, Traits) ->
 	1 ->
 	    {ClassName, Rest, Strings1} = decode_string(Data, Strings),
 	    {PropertyNames, Rest1, Strings2} =
-		decode_strings(Ref bsr 3, Rest, Strings1, []),
-	    PropertyNames2 = lists:map(fun binary_to_atom/1, PropertyNames),
+		decode_strings_as_atoms(Ref bsr 3, Rest, Strings1, []),
 	    Trait = #trait{class = ClassName,
 			   is_externalizable = ?IS_SET(Ref, 2),
 			   is_dynamic = ?IS_SET(Ref, 4),
-			   property_names = PropertyNames2},
+			   property_names = PropertyNames},
 	    Key = gb_trees:size(Traits),
 	    Traits1 = gb_trees:insert(Key, Trait, Traits),
 	    {Trait, Rest1, Strings2, Traits1};
@@ -177,11 +177,12 @@ decode_trait(Ref, Data, Strings, Traits) ->
 	    {gb_trees:get(Ref bsr 1, Traits), Data, Strings, Traits}
     end.
 
-decode_strings(0, Rest, Strings, Acc) ->
+decode_strings_as_atoms(0, Rest, Strings, Acc) ->
     {lists:reverse(Acc), Rest, Strings};
-decode_strings(N, Data, Strings, Acc) ->
+decode_strings_as_atoms(N, Data, Strings, Acc) ->
     {String, Rest, Strings1} = decode_string(Data, Strings),
-    decode_strings(N - 1, Rest, Strings1, [String | Acc]).
+    Atom = binary_to_atom(String, utf8),
+    decode_strings_as_atoms(N - 1, Rest, Strings1, [Atom | Acc]).
 
 decode_object(Trait, Data, Strings, Objects, Traits)
   when Trait#trait.is_externalizable ->
@@ -220,9 +221,6 @@ external_module(<<"DSC">>) -> 'CommandMessage';
 external_module(<<"DSK">>) -> 'AcknowledgeMessage';
 external_module(Class) ->
     throw({unknown_class, Class}).
-
-binary_to_atom(Bin) when is_binary(Bin) ->
-    list_to_atom(binary_to_list(Bin)).
 
 encode(AMF) ->
     Empty = gb_trees:empty(),
@@ -390,7 +388,7 @@ encode_as_reference(Value, Iterator0) ->
     end.
 
 encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits) ->
-    {KeyBin, Strings1} = encode_string(Key, Strings),
+    {KeyBin, Strings1} = encode_string(atom_to_binary(Key, utf8), Strings),
     {ValBin, Strings2, Objects2, Traits2} =
 	encode(Value, Strings1, Objects, Traits),
     Bin = <<KeyBin/binary, ValBin/binary>>,
@@ -426,23 +424,22 @@ encode_trait(Trait, Strings, Traits) ->
 		   end,
 	    RefBin = encode_uint29(Ref2),
 	    {PropNames, Strings2} =
-		encode_strings(Trait#trait.property_names, [], Strings1),
+		encode_atoms_as_strings(Trait#trait.property_names, Strings1),
 	    Bin = <<RefBin/binary, Class/binary, PropNames/binary>>,
 	    {Bin, Strings2, Traits1}
     end.
 
-encode_strings([], Acc, Strings) ->
+encode_atoms_as_strings(Atoms, Strings) ->
+    encode_atoms_as_strings(Atoms, [], Strings).
+
+encode_atoms_as_strings([], Acc, Strings) ->
     {list_to_binary(lists:reverse(Acc)), Strings};
-encode_strings([String | Rest], Acc, Strings) ->
-    {Bin, Strings1} = encode_string(to_binary(String), Strings),
-    encode_strings(Rest, [Bin | Acc], Strings1).
+encode_atoms_as_strings([Atom | Rest], Acc, Strings) ->
+    {Bin, Strings1} = encode_string(atom_to_binary(Atom, utf8), Strings),
+    encode_atoms_as_strings(Rest, [Bin | Acc], Strings1).
 
 insert_string(<<>>, Strings) ->
     Strings;
 insert_string(String, Strings) ->
     gb_trees:insert(gb_trees:size(Strings), String, Strings).
 
-to_binary(Bin) when is_binary(Bin) ->
-    Bin;
-to_binary(Atom) when is_atom(Atom) ->
-    list_to_binary(atom_to_list(Atom)).

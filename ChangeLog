@@ -1,3 +1,15 @@
+2009-07-31  Ruslan Babayev  <ruslan@babayev.com>
+
+	* src/amf3.erl (decode_assoc): Use binary_to_atom/2 BIF.
+	(decode_strings_as_atoms): New function to replace decode_strings/4.
+	(decode_trait): Use decode_strings_as_atoms/4.
+	(encode_assoc): Use atom_to_binary/2 BIF.
+	(encode_trait): Use encode_atoms_as_strings/2.
+	(encode_atoms_as_strings): New function to replace encode_strings/3.
+
+	* src/amf0.erl (decode_members): Use binary_to_atom/2 BIF.
+	(encode_members): Use atom_to_binary/2 BIF.
+
 2009-07-28  Ruslan Babayev  <ruslan@redwoodsys.com>
 
 	* src/amf3.erl (encode_as_reference): Check the return value of
