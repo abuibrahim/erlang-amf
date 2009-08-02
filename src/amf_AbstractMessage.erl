@@ -1,10 +1,14 @@
--module('AbstractMessage').
--export([decode/4,
-	 decode_flag_bytes/1,
+%%-------------------------------------------------------------------
+%% @author Ruslan Babayev <ruslan@babayev.com>
+%% @copyright 2009, Ruslan Babayev.
+%% @doc AbstractMessage Deserialization.
+%% @end
+%%-------------------------------------------------------------------
+-module(amf_AbstractMessage).
+-export([decode_members/4,
 	 decode_members/6,
+	 decode_flag_bytes/1,
 	 decode_ignored_flags/2]).
-
--include("amf.hrl").
 
 -define(BODY,                 1).
 -define(CLIENT_ID,            2).
@@ -21,13 +25,10 @@
 -define(IS_SET(Byte, Flag), ((Byte) band Flag) == Flag).
 -define(CLEAR(Byte, Flag), ((Byte) band bnot Flag)).
 
-decode(Data, Strings, Objects, Traits) ->
+decode_members(Data, Strings, Objects, Traits) ->
     {Bytes, Rest} = decode_flag_bytes(Data),
     Flags = decode_flags(Bytes),
-    {Members, Rest1, Strings1, Objects1, Traits1} =
-	decode_members(Flags, Rest, Strings, Objects, Traits, []),
-    Object = #amf_object{members = Members},
-    {Object, Rest1, Strings1, Objects1, Traits1}.
+    decode_members(Flags, Rest, Strings, Objects, Traits, []).
 
 decode_flag_bytes(Data) ->
     decode_flag_bytes(Data, []).

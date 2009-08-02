@@ -1,8 +1,11 @@
+%%-------------------------------------------------------------------
+%% @author Ruslan Babayev <ruslan@babayev.com>
+%% @copyright 2009, Ruslan Babayev.
+%% @doc AMF3 serialization/deserialization.
+%% @end
+%%-------------------------------------------------------------------
 -module(amf3).
 -export([encode/1, decode/1]).
--compile(export_all).
-
--include("amf.hrl").
 
 -define(UNDEFINED, 16#00).
 -define(NULL,      16#01).
@@ -18,10 +21,23 @@
 -define(XML,       16#0B).
 -define(BYTEARRAY, 16#0C).
 
+%% @type proplist() = [{atom() | binary(), amf3()}].
+%% @type object() = {object, Class::binary(), Members::proplist()}.
+%% @type date() = {date, MilliSecs::float(), TimeZone::integer()}.
+%% @type xmldoc() = {xmldoc, Contents::binary()}.
+%% @type xml() = {xml, Contents::binary()}.
+%% @type array() = [{Key::binary(), Value::amf3()} | amf3()].
+%% @type bytearray() = {bytearray, Bytes::binary()}.
+%% @type amf3() = undefined | null | false | true | integer() |
+%%       double() | binary() | xmldoc() | date() | array() |
+%%       object() | xml() | bytearray().
+
 -record(trait, {class, is_dynamic, is_externalizable, property_names}).
 
 -define(IS_SET(Byte, Flag), ((Byte) band Flag) == Flag).
 
+%% @doc Deserialize Erlang terms from AMF3.
+%% @spec (binary()) -> {amf3(), Rest::binary()}
 decode(Data) ->
     Empty = gb_trees:empty(),
     {AMF, Rest, _, _, _} = decode(Data, Empty, Empty, Empty),
@@ -80,7 +96,7 @@ decode(<<?OBJECT, Data/binary>>, Strings, Objects, Traits) ->
 	{inline, Len, Rest} ->
 	    {Trait, Rest1, Strings1, Traits1} =
 		decode_trait(Len, Rest, Strings, Traits),
-	    Object0 = #amf_object{class = Trait#trait.class},
+	    Object0 = {object, Trait#trait.class, []},
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object0, Objects),
 	    {Object, Rest2, Strings2, Objects2, Traits2} =
@@ -147,10 +163,9 @@ decode_assoc(Data, Strings, Objects, Traits, Acc) ->
     case decode_string(Data, Strings) of
 	{<<>>, Rest, Strings1} ->
 	    {lists:reverse(Acc), Rest, Strings1, Objects, Traits};
-	{KeyBin, Rest, Strings1} ->
+	{Key, Rest, Strings1} ->
 	    {Value, Rest1, S2, O2, T2} =
 		decode(Rest, Strings1, Objects, Traits),
-	    Key = binary_to_atom(KeyBin, utf8),
 	    decode_assoc(Rest1, S2, O2, T2, [{Key, Value} | Acc])
     end.
 
@@ -195,10 +210,9 @@ decode_object(Trait, Data, Strings, Objects, Traits)
 	    decode(Data, Strings, Objects, Traits);
 	Class ->
 	    Module = external_module(Class),
-	    {Object, Rest, Strings1, Objects1, Traits1} =
-		Module:decode(Data, Strings, Objects, Traits),
-	    Object1 = Object#amf_object{class = Class},
-	    {Object1, Rest, Strings1, Objects1, Traits1}
+	    {Members, Rest, Strings1, Objects1, Traits1} =
+		Module:decode_members(Data, Strings, Objects, Traits),
+	    {{object, Class, Members}, Rest, Strings1, Objects1, Traits1}
     end;
 decode_object(Trait, Data, Strings, Objects, Traits) ->
     Len = length(Trait#trait.property_names),
@@ -212,19 +226,20 @@ decode_object(Trait, Data, Strings, Objects, Traits) ->
 	    false ->
 		{[], Rest1, Strings1, Objects1, Traits1}
 	end,
-    Object = #amf_object{class = Trait#trait.class,
-			 members = Sealed ++ Dynamic},
+    Object = {object, Trait#trait.class, Sealed ++ Dynamic},
     {Object, Rest2, Strings2, Objects2, Traits2}.
 
-external_module(<<"DSA">>) -> 'AsyncMessage';
-external_module(<<"DSC">>) -> 'CommandMessage';
-external_module(<<"DSK">>) -> 'AcknowledgeMessage';
+external_module(<<"DSA">>) -> amf_AsyncMessage;
+external_module(<<"DSC">>) -> amf_CommandMessage;
+external_module(<<"DSK">>) -> amf_AcknowledgeMessage;
 external_module(Class) ->
-    throw({unknown_class, Class}).
+    throw({?MODULE, ?LINE, unknown_class, Class}).
 
-encode(AMF) ->
+%% @doc Serialize Erlang terms into AMF3.
+%% @spec (amf3()) -> binary()
+encode(AMF3) ->
     Empty = gb_trees:empty(),
-    {Bin, _Strings, _Objects, _Traits} = encode(AMF, Empty, Empty, Empty),
+    {Bin, _Strings, _Objects, _Traits} = encode(AMF3, Empty, Empty, Empty),
     Bin.
 
 encode(undefined, Strings, Objects, Traits) ->
@@ -264,12 +279,10 @@ encode(Array, Strings, Objects, Traits) when is_list(Array) ->
 	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Array, Objects),
-	    Split = fun({K, V}, {Assoc, Dense}) when is_binary(K) ->
-			    {Assoc ++ [{K, V}], Dense};
-		       (V, {Assoc, Dense}) ->
-			    {Assoc, Dense ++ [V]}
-		    end,
-	    {AssocList, DenseList} = lists:foldl(Split, {[], []}, Array),
+	    F = fun({K, _V}) when is_binary(K) -> true;
+		   (_V) -> false
+		end,
+	    {AssocList, DenseList} = lists:partition(F, Array),
 	    {AssocBin, Strings2, Objects2, Traits2} =
 		encode_assoc(AssocList, [], Strings, Objects1, Traits),
 	    DenseLen = encode_uint29(length(DenseList) bsl 1 bor 1),
@@ -279,7 +292,7 @@ encode(Array, Strings, Objects, Traits) when is_list(Array) ->
 		   DenseBin/binary>>,
 	    {Bin, Strings3, Objects3, Traits3}
     end;
-encode(Object, Strings, Objects, Traits) when is_record(Object, amf_object) ->
+encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
     try encode_as_reference(Object, gb_trees:iterator(Objects)) of
 	Bin ->
 	    {<<?OBJECT, Bin/binary>>, Strings, Objects, Traits}
@@ -287,21 +300,19 @@ encode(Object, Strings, Objects, Traits) when is_record(Object, amf_object) ->
 	noref ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    #amf_object{class = Class, members = Members} = Object,
-	    KeyIsAtom =
-		fun({K, _}) when is_atom(K) -> true;
-		   (_) -> false
+	    F = fun({K, _}) when is_atom(K)   -> true;
+		   ({K, _}) when is_binary(K) -> false
 		end,
-	    SealedMembers = lists:filter(KeyIsAtom, Members),
+	    {SealedMembers, DynamicMembers} =
+		try lists:partition(F, Members)
+		catch
+		    error:function_clause ->
+			throw({?MODULE, ?LINE, badmember})
+		end,
 	    {SealedKeys, SealedVals} = lists:unzip(SealedMembers),
-	    KeyIsBinary =
-		fun({K, _}) when is_binary(K) -> true;
-		   (_) -> false
-		end,
-	    DynamicMembers = lists:filter(KeyIsBinary, Members),
 	    Trait = #trait{class = Class,
 			   is_dynamic = (length(DynamicMembers) > 0),
-			   is_externalizable = false, %% TODO: handle ext
+			   is_externalizable = false, % TODO: handle ext
 			   property_names = SealedKeys
 			  },
 	    {TraitBin, Strings1, Traits1} =
@@ -322,9 +333,11 @@ encode(Object, Strings, Objects, Traits) when is_record(Object, amf_object) ->
 encode({xml, String}, Strings, Objects, Traits) ->
     {Bin, Strings1} = encode_string(String, Strings),
     {<<?XML, Bin/binary>>, Strings1, Objects, Traits};
-encode({bytearray, String}, Strings, Objects, Traits) ->
-    {Bin, Objects1} = encode_string(String, Objects),
-    {<<?BYTEARRAY, Bin/binary>>, Strings, Objects1, Traits}.
+encode({bytearray, _Bytes} = ByteArray, Strings, Objects, Traits) ->
+    {Bin, Objects1} = encode_bytearray(ByteArray, Objects),
+    {<<?BYTEARRAY, Bin/binary>>, Strings, Objects1, Traits};
+encode(Value, _Strings, _Objects, _Traits) ->
+    throw({?MODULE, ?LINE, badval, Value}).
 
 encode_int29(I) when I >= -16#10000000, I < 0 ->
     encode_uint29(16#20000000 + I);
@@ -349,7 +362,7 @@ encode_uint29(I) when I >= 16#00200000, I =< 16#1FFFFFFF ->
     X4 = I band 16#FF,
     <<X1, X2, X3, X4>>;
 encode_uint29(_) ->
-    throw(badrange).
+    throw({?MODULE, ?LINE, badrange}).
 
 encode_string(String, Strings) ->
     try encode_as_reference(String, gb_trees:iterator(Strings)) of
@@ -377,7 +390,7 @@ encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
 encode_as_reference(Value, Iterator0) ->
     case gb_trees:next(Iterator0) of
 	{Key, Value, _} when is_record(Value, trait) ->
-	    % Obj is inline, Trait is a 27bit reference.
+	    %% Obj is inline, Trait is a 27bit reference.
 	    encode_uint29(Key bsl 2 bor 1);
 	{Key, Value, _} ->
 	    encode_uint29(Key bsl 1);
@@ -387,8 +400,9 @@ encode_as_reference(Value, Iterator0) ->
 	    throw(noref)
     end.
 
-encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits) ->
-    {KeyBin, Strings1} = encode_string(atom_to_binary(Key, utf8), Strings),
+encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits)
+  when is_binary(Key) ->
+    {KeyBin, Strings1} = encode_string(Key, Strings),
     {ValBin, Strings2, Objects2, Traits2} =
 	encode(Value, Strings1, Objects, Traits),
     Bin = <<KeyBin/binary, ValBin/binary>>,
@@ -396,7 +410,9 @@ encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits) ->
 encode_assoc([], Acc, Strings, Objects, Traits) ->
     {EmptyString, _} = encode_string(<<>>, Strings),
     Bin = list_to_binary(lists:reverse([EmptyString | Acc])),
-    {Bin, Strings, Objects, Traits}.
+    {Bin, Strings, Objects, Traits};
+encode_assoc([Property | _Rest], _Acc, _Strings, _Objects, _Traits) ->
+    throw({?MODULE, ?LINE, badprop, Property}).
 
 encode_dense([], Acc, Strings, Objects, Traits) ->
     {list_to_binary(lists:reverse(Acc)), Strings, Objects, Traits};
@@ -415,7 +431,7 @@ encode_trait(Trait, Strings, Traits) ->
 	    Traits1 = gb_trees:insert(Key, Trait, Traits),
 	    {Class, Strings1} = encode_string(Trait#trait.class, Strings),
 	    Ref0 = length(Trait#trait.property_names) bsl 4,
-	    Ref1 = Ref0 bor 2#011, %% non-ext, trait-inline, obj-inline
+	    Ref1 = Ref0 bor 2#011, % non-ext, trait-inline, obj-inline
 	    Ref2 = case Trait#trait.is_dynamic of
 		       true ->
 			   Ref1 bor 2#1000;
@@ -442,4 +458,3 @@ insert_string(<<>>, Strings) ->
     Strings;
 insert_string(String, Strings) ->
     gb_trees:insert(gb_trees:size(Strings), String, Strings).
-

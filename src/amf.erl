@@ -1,8 +1,16 @@
+%%-------------------------------------------------------------------
+%% @author Ruslan Babayev <ruslan@babayev.com>
+%% @copyright 2009, Ruslan Babayev.
+%% @doc AMF serialization/deserialization.
+%% @end
+%%-------------------------------------------------------------------
 -module(amf).
 -export([encode_packet/1, decode_packet/1]).
 
 -include("amf.hrl").
 
+%% @doc Decode AMF Packet.
+%% @spec (Data::binary()) -> #amf_packet{}
 decode_packet(<<Version:16, HeaderCount:16, Data/binary>>) ->
     {Headers, <<MessageCount:16, Rest/binary>>} =
 	decode_header(Data, HeaderCount, [], Version),
@@ -24,6 +32,8 @@ decode_message(<<TL:16, Target:TL/binary, RL:16, Response:RL/binary,
     Message = #amf_message{target = Target, response = Response, body = Body},
     decode_message(Rest, N - 1, [Message | Acc], V).
 
+%% @doc Encode AMF Packet.
+%% @spec (Packet::#amf_packet{}) -> binary()
 encode_packet(#amf_packet{version = Version, headers = Headers,
 			  messages = Messages}) ->
     HeadersBin = encode_headers(Headers, [], Version),

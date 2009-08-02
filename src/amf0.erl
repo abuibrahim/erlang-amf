@@ -1,7 +1,11 @@
+%%-------------------------------------------------------------------
+%% @author Ruslan Babayev <ruslan@babayev.com>
+%% @copyright 2009, Ruslan Babayev.
+%% @doc AMF0 serialization/deserialization.
+%% @end
+%%-------------------------------------------------------------------
 -module(amf0).
 -export([encode/1, decode/1]).
-
--include("amf.hrl").
 
 -define(NUMBER,        16#00).
 -define(BOOL,          16#01).
@@ -22,6 +26,20 @@
 -define(TYPEDOBJECT,   16#10).
 -define(AVMPLUSOBJECT, 16#11).
 
+%% @type proplist() = [{atom(), amf0()}].
+%% @type object() = {object, Members::proplist()}.
+%% @type typed_object() = {object, Class::binary(), Members::proplist()}.
+%% @type date() = {date, MilliSecs::float(), TimeZone::integer()}.
+%% @type xmldoc() = {xmldoc, Contents::binary()}.
+%% @type ecma_array() = proplist().
+%% @type strict_array() = [amf0()].
+%% @type avmplus() = {avmplus, amf3()}.
+%% @type amf0() = float() | bool() | binary() | object() | null |
+%%       undefined | ecma_array() | strict_array() | date() |
+%%       typed_object() | xmldoc() | avmplus().
+
+%% @doc Deserialize Erlang terms from AMF0.
+%% @spec (binary()) -> {amf0(), Rest::binary()}
 decode(Data) ->
     {AMF, Rest, _Objects} = decode(Data, gb_trees:empty()),
     {AMF, Rest}.
@@ -36,7 +54,7 @@ decode(<<?OBJECT, Data/binary>>, Objects) ->
     Key = gb_trees:size(Objects),
     Objects1 = gb_trees:insert(Key, {ref, Key}, Objects),
     {Members, Objects2, Rest} = decode_members(Data, [], Objects1),
-    Object = #amf_object{members = Members},
+    Object = {object, Members},
     Objects3 = gb_trees:update(Key, Object, Objects2),
     {Object, Rest, Objects3};
 decode(<<?NULL, Rest/binary>>, Objects) ->
@@ -69,7 +87,7 @@ decode(<<?TYPEDOBJECT, L:16, Class:L/binary, Data/binary>>, Objects) ->
     Key = gb_trees:size(Objects),
     Objects1 = gb_trees:insert(Key, {ref, Key}, Objects),
     {Members, Objects2, Rest} = decode_members(Data, [], Objects1),
-    Object = #amf_object{class = Class, members = Members},
+    Object = {object, Class, Members},
     Objects3 = gb_trees:update(Key, Object, Objects2),
     {Object, Rest, Objects3};
 decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
@@ -88,8 +106,10 @@ decode_array(Size, Data, Acc, Objects) ->
     {Element, Rest, Objects1} = decode(Data, Objects),
     decode_array(Size - 1, Rest, [Element | Acc], Objects1). 
 
-encode(AMF) ->
-    {Bin, _Objects} = encode(AMF, gb_trees:empty()),
+%% @doc Serialize Erlang terms into AMF0.
+%% @spec (amf0()) -> binary()
+encode(AMF0) ->
+    {Bin, _Objects} = encode(AMF0, gb_trees:empty()),
     Bin.
 
 encode({avmplus, Object}, Objects) ->
@@ -116,25 +136,23 @@ encode(unsupported, Objects) ->
     {<<?UNSUPPORTED>>, Objects};
 encode({xmldoc, String}, Objects) ->
     {<<?XMLDOCUMENT, (size(String)):32, String/binary>>, Objects};
-encode(Object, Objects) when Object#amf_object.class == <<>> ->
+encode({object, Members} = Object, Objects) ->
     case encode_as_reference(Object, gb_trees:iterator(Objects)) of
 	{ok, Bin} ->
 	    {Bin, Objects};
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    Members = Object#amf_object.members,
 	    {Bin, Objects2} = encode_members(Members, [], Objects1),
 	    {<<?OBJECT, Bin/binary>>, Objects2}
     end;
-encode(Object, Objects) when is_record(Object, amf_object) ->
+encode({object, Class, Members} = Object, Objects) ->
     case encode_as_reference(Object, gb_trees:iterator(Objects)) of
 	{ok, Bin} ->
 	    {Bin, Objects};
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    #amf_object{class = Class, members = Members} = Object,
 	    {Bin, Objects2} = encode_members(Members, [], Objects1),
 	    Bin1 = <<?TYPEDOBJECT, (size(Class)):16, Class/binary,Bin/binary>>,
 	    {Bin1, Objects2}
@@ -185,4 +203,3 @@ encode_as_reference(Value, Iterator0) ->
 	{_, _, Iterator1} ->
 	    encode_as_reference(Value, Iterator1)
     end.
-

@@ -565,9 +565,9 @@ ERLANG_LIB_VER_kernel
 ERLANG_LIB_DIR_kernel
 ERLANG_LIB_DIR
 ERL
+ac_prefix_program
 ERLCFLAGS
 ERLC
-ac_prefix_program
 am__untar
 am__tar
 AMTAR
@@ -2242,98 +2242,6 @@ am__tar='${AMTAR} chof - "$$tardir"'; am__untar='${AMTAR} xf -'
 
 
 
-if test "x$prefix" = xNONE; then
-  $as_echo_n "checking for prefix by " >&6
-  # Extract the first word of "erl", so it can be a program name with args.
-set dummy erl; ac_word=$2
-{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
-$as_echo_n "checking for $ac_word... " >&6; }
-if test "${ac_cv_path_ac_prefix_program+set}" = set; then :
-  $as_echo_n "(cached) " >&6
-else
-  case $ac_prefix_program in
-  [\\/]* | ?:[\\/]*)
-  ac_cv_path_ac_prefix_program="$ac_prefix_program" # Let the user override the test with a path.
-  ;;
-  *)
-  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
-for as_dir in $PATH
-do
-  IFS=$as_save_IFS
-  test -z "$as_dir" && as_dir=.
-    for ac_exec_ext in '' $ac_executable_extensions; do
-  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
-    ac_cv_path_ac_prefix_program="$as_dir/$ac_word$ac_exec_ext"
-    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
-    break 2
-  fi
-done
-  done
-IFS=$as_save_IFS
-
-  ;;
-esac
-fi
-ac_prefix_program=$ac_cv_path_ac_prefix_program
-if test -n "$ac_prefix_program"; then
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_prefix_program" >&5
-$as_echo "$ac_prefix_program" >&6; }
-else
-  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
-$as_echo "no" >&6; }
-fi
-
-
-  if test -n "$ac_prefix_program"; then
-    prefix=`$as_dirname -- "$ac_prefix_program" ||
-$as_expr X"$ac_prefix_program" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-	 X"$ac_prefix_program" : 'X\(//\)[^/]' \| \
-	 X"$ac_prefix_program" : 'X\(//\)$' \| \
-	 X"$ac_prefix_program" : 'X\(/\)' \| . 2>/dev/null ||
-$as_echo X"$ac_prefix_program" |
-    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\/\)[^/].*/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\/\)$/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\).*/{
-	    s//\1/
-	    q
-	  }
-	  s/.*/./; q'`
-    prefix=`$as_dirname -- "$prefix" ||
-$as_expr X"$prefix" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
-	 X"$prefix" : 'X\(//\)[^/]' \| \
-	 X"$prefix" : 'X\(//\)$' \| \
-	 X"$prefix" : 'X\(/\)' \| . 2>/dev/null ||
-$as_echo X"$prefix" |
-    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\/\)[^/].*/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\/\)$/{
-	    s//\1/
-	    q
-	  }
-	  /^X\(\/\).*/{
-	    s//\1/
-	    q
-	  }
-	  s/.*/./; q'`
-  fi
-fi
-
 if test -n "$ERLC"; then
     { $as_echo "$as_me:${as_lineno-$LINENO}: checking for erlc" >&5
 $as_echo_n "checking for erlc... " >&6; }
@@ -2442,6 +2350,98 @@ fi
 
 if test "$ERLC" = "not found"; then
     as_fn_error "Erlang/OTP compiler (erlc) not found but required" "$LINENO" 5
+fi
+
+if test "x$prefix" = xNONE; then
+  $as_echo_n "checking for prefix by " >&6
+  # Extract the first word of "erl", so it can be a program name with args.
+set dummy erl; ac_word=$2
+{ $as_echo "$as_me:${as_lineno-$LINENO}: checking for $ac_word" >&5
+$as_echo_n "checking for $ac_word... " >&6; }
+if test "${ac_cv_path_ac_prefix_program+set}" = set; then :
+  $as_echo_n "(cached) " >&6
+else
+  case $ac_prefix_program in
+  [\\/]* | ?:[\\/]*)
+  ac_cv_path_ac_prefix_program="$ac_prefix_program" # Let the user override the test with a path.
+  ;;
+  *)
+  as_save_IFS=$IFS; IFS=$PATH_SEPARATOR
+for as_dir in $PATH
+do
+  IFS=$as_save_IFS
+  test -z "$as_dir" && as_dir=.
+    for ac_exec_ext in '' $ac_executable_extensions; do
+  if { test -f "$as_dir/$ac_word$ac_exec_ext" && $as_test_x "$as_dir/$ac_word$ac_exec_ext"; }; then
+    ac_cv_path_ac_prefix_program="$as_dir/$ac_word$ac_exec_ext"
+    $as_echo "$as_me:${as_lineno-$LINENO}: found $as_dir/$ac_word$ac_exec_ext" >&5
+    break 2
+  fi
+done
+  done
+IFS=$as_save_IFS
+
+  ;;
+esac
+fi
+ac_prefix_program=$ac_cv_path_ac_prefix_program
+if test -n "$ac_prefix_program"; then
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: $ac_prefix_program" >&5
+$as_echo "$ac_prefix_program" >&6; }
+else
+  { $as_echo "$as_me:${as_lineno-$LINENO}: result: no" >&5
+$as_echo "no" >&6; }
+fi
+
+
+  if test -n "$ac_prefix_program"; then
+    prefix=`$as_dirname -- "$ac_prefix_program" ||
+$as_expr X"$ac_prefix_program" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
+	 X"$ac_prefix_program" : 'X\(//\)[^/]' \| \
+	 X"$ac_prefix_program" : 'X\(//\)$' \| \
+	 X"$ac_prefix_program" : 'X\(/\)' \| . 2>/dev/null ||
+$as_echo X"$ac_prefix_program" |
+    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)[^/].*/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+    prefix=`$as_dirname -- "$prefix" ||
+$as_expr X"$prefix" : 'X\(.*[^/]\)//*[^/][^/]*/*$' \| \
+	 X"$prefix" : 'X\(//\)[^/]' \| \
+	 X"$prefix" : 'X\(//\)$' \| \
+	 X"$prefix" : 'X\(/\)' \| . 2>/dev/null ||
+$as_echo X"$prefix" |
+    sed '/^X\(.*[^/]\)\/\/*[^/][^/]*\/*$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)[^/].*/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\/\)$/{
+	    s//\1/
+	    q
+	  }
+	  /^X\(\/\).*/{
+	    s//\1/
+	    q
+	  }
+	  s/.*/./; q'`
+  fi
 fi
 
 if test -n "$ERL"; then
@@ -2791,7 +2791,7 @@ $as_echo "$ERLANG_INSTALL_LIB_DIR/amf-1.0.1" >&6; }
 fi
 
 
-ac_config_files="$ac_config_files Makefile src/amf.app src/Makefile"
+ac_config_files="$ac_config_files Makefile src/amf.app src/overview.edoc src/Makefile"
 
 cat >confcache <<\_ACEOF
 # This file is a shell script that caches the results of configure
@@ -3493,6 +3493,7 @@ do
   case $ac_config_target in
     "Makefile") CONFIG_FILES="$CONFIG_FILES Makefile" ;;
     "src/amf.app") CONFIG_FILES="$CONFIG_FILES src/amf.app" ;;
+    "src/overview.edoc") CONFIG_FILES="$CONFIG_FILES src/overview.edoc" ;;
     "src/Makefile") CONFIG_FILES="$CONFIG_FILES src/Makefile" ;;
 
   *) as_fn_error "invalid argument: \`$ac_config_target'" "$LINENO" 5;;

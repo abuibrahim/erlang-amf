@@ -33,14 +33,15 @@ NORMAL_UNINSTALL = :
 PRE_UNINSTALL = :
 POST_UNINSTALL = :
 subdir = src
-DIST_COMMON = $(dist_erl_DATA) $(dist_hrl_DATA) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in $(srcdir)/amf.app.in
+DIST_COMMON = $(dist_erl_DATA) $(dist_hrl_DATA) $(dist_noinst_DATA) \
+	$(srcdir)/Makefile.am $(srcdir)/Makefile.in \
+	$(srcdir)/amf.app.in $(srcdir)/overview.edoc.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 	$(ACLOCAL_M4)
 mkinstalldirs = $(install_sh) -d
-CONFIG_CLEAN_FILES = amf.app
+CONFIG_CLEAN_FILES = amf.app overview.edoc
 CONFIG_CLEAN_VPATH_FILES =
 SOURCES =
 DIST_SOURCES =
@@ -66,8 +67,9 @@ am__base_list = \
   sed '$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;$$!N;s/\n/ /g' | \
   sed '$$!N;$$!N;$$!N;$$!N;s/\n/ /g'
 am__installdirs = "$(DESTDIR)$(beamdir)" "$(DESTDIR)$(erldir)" \
-	"$(DESTDIR)$(hrldir)"
-DATA = $(beam_DATA) $(dist_erl_DATA) $(dist_hrl_DATA)
+	"$(DESTDIR)$(hrldir)" "$(DESTDIR)$(htmldir)"
+DATA = $(beam_DATA) $(dist_erl_DATA) $(dist_hrl_DATA) \
+	$(dist_noinst_DATA) $(html_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 ACLOCAL = @ACLOCAL@
 AMTAR = @AMTAR@
@@ -129,7 +131,7 @@ docdir = @docdir@
 dvidir = @dvidir@
 exec_prefix = @exec_prefix@
 host_alias = @host_alias@
-htmldir = @htmldir@
+htmldir = $(ERLANG_INSTALL_LIB_DIR_amf)/doc
 includedir = @includedir@
 infodir = @infodir@
 install_sh = @install_sh@
@@ -152,15 +154,19 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-dist_erl_DATA = amf.erl	amf0.erl amf3.erl AbstractMessage.erl \
-	AsyncMessage.erl CommandMessage.erl AcknowledgeMessage.erl
+dist_erl_DATA = amf.erl	amf0.erl amf3.erl amf_AbstractMessage.erl \
+	amf_AsyncMessage.erl amf_CommandMessage.erl amf_AcknowledgeMessage.erl
 
 erldir = $(ERLANG_INSTALL_LIB_DIR_amf)/src
 dist_hrl_DATA = amf.hrl
 hrldir = $(ERLANG_INSTALL_LIB_DIR_amf)/include
 beam_DATA = $(dist_erl_DATA:.erl=.beam) amf.app
 beamdir = $(ERLANG_INSTALL_LIB_DIR_amf)/ebin
-CLEANFILES = $(beam_DATA)
+html_DATA = $(dist_erl_DATA:.erl=.html) erlang.png edoc-info stylesheet.css \
+	index.html overview-summary.html modules-frame.html packages-frame.html
+
+dist_noinst_DATA = overview.edoc.in
+CLEANFILES = $(beam_DATA) $(html_DATA) overview.edoc
 all: all-am
 
 .SUFFIXES:
@@ -196,6 +202,8 @@ $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 amf.app: $(top_builddir)/config.status $(srcdir)/amf.app.in
+	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
+overview.edoc: $(top_builddir)/config.status $(srcdir)/overview.edoc.in
 	cd $(top_builddir) && $(SHELL) ./config.status $(subdir)/$@
 install-beamDATA: $(beam_DATA)
 	@$(NORMAL_INSTALL)
@@ -257,6 +265,26 @@ uninstall-dist_hrlDATA:
 	test -n "$$files" || exit 0; \
 	echo " ( cd '$(DESTDIR)$(hrldir)' && rm -f" $$files ")"; \
 	cd "$(DESTDIR)$(hrldir)" && rm -f $$files
+install-htmlDATA: $(html_DATA)
+	@$(NORMAL_INSTALL)
+	test -z "$(htmldir)" || $(MKDIR_P) "$(DESTDIR)$(htmldir)"
+	@list='$(html_DATA)'; test -n "$(htmldir)" || list=; \
+	for p in $$list; do \
+	  if test -f "$$p"; then d=; else d="$(srcdir)/"; fi; \
+	  echo "$$d$$p"; \
+	done | $(am__base_list) | \
+	while read files; do \
+	  echo " $(INSTALL_DATA) $$files '$(DESTDIR)$(htmldir)'"; \
+	  $(INSTALL_DATA) $$files "$(DESTDIR)$(htmldir)" || exit $$?; \
+	done
+
+uninstall-htmlDATA:
+	@$(NORMAL_UNINSTALL)
+	@list='$(html_DATA)'; test -n "$(htmldir)" || list=; \
+	files=`for p in $$list; do echo $$p; done | sed -e 's|^.*/||'`; \
+	test -n "$$files" || exit 0; \
+	echo " ( cd '$(DESTDIR)$(htmldir)' && rm -f" $$files ")"; \
+	cd "$(DESTDIR)$(htmldir)" && rm -f $$files
 tags: TAGS
 TAGS:
 
@@ -298,7 +326,7 @@ check-am: all-am
 check: check-am
 all-am: Makefile $(DATA)
 installdirs:
-	for dir in "$(DESTDIR)$(beamdir)" "$(DESTDIR)$(erldir)" "$(DESTDIR)$(hrldir)"; do \
+	for dir in "$(DESTDIR)$(beamdir)" "$(DESTDIR)$(erldir)" "$(DESTDIR)$(hrldir)" "$(DESTDIR)$(htmldir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
 	done
 install: install-am
@@ -348,7 +376,7 @@ info: info-am
 info-am:
 
 install-data-am: install-beamDATA install-dist_erlDATA \
-	install-dist_hrlDATA
+	install-dist_hrlDATA install-htmlDATA
 
 install-dvi: install-dvi-am
 
@@ -393,7 +421,7 @@ ps: ps-am
 ps-am:
 
 uninstall-am: uninstall-beamDATA uninstall-dist_erlDATA \
-	uninstall-dist_hrlDATA
+	uninstall-dist_hrlDATA uninstall-htmlDATA
 
 .MAKE: install-am install-strip
 
@@ -402,13 +430,14 @@ uninstall-am: uninstall-beamDATA uninstall-dist_erlDATA \
 	install install-am install-beamDATA install-data \
 	install-data-am install-dist_erlDATA install-dist_hrlDATA \
 	install-dvi install-dvi-am install-exec install-exec-am \
-	install-html install-html-am install-info install-info-am \
-	install-man install-pdf install-pdf-am install-ps \
-	install-ps-am install-strip installcheck installcheck-am \
-	installdirs maintainer-clean maintainer-clean-generic \
-	mostlyclean mostlyclean-generic pdf pdf-am ps ps-am uninstall \
-	uninstall-am uninstall-beamDATA uninstall-dist_erlDATA \
-	uninstall-dist_hrlDATA
+	install-html install-html-am install-htmlDATA install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-generic pdf \
+	pdf-am ps ps-am uninstall uninstall-am uninstall-beamDATA \
+	uninstall-dist_erlDATA uninstall-dist_hrlDATA \
+	uninstall-htmlDATA
 
 
 $(beam_DATA): $(dist_hrl_DATA)
@@ -416,6 +445,14 @@ $(beam_DATA): $(dist_hrl_DATA)
 .erl.beam:
 	@echo "Compiling $<..."
 	@$(ERLC) $(ERLCFLAGS) $<
+
+$(html_DATA): $(dist_erl_DATA) overview.edoc
+	@echo "Generating documentation..."
+	@$(ERL) -noshell -run edoc_run application amf '"."' '[{dir,"."}]'
+
+check:
+	@echo "Running unit tests..."
+	@$(ERL) -eval "eunit:test({application,amf})" -noshell -s init stop
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.

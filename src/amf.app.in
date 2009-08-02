@@ -2,8 +2,8 @@
 {application, amf,
  [{description, "Action Message Format Library"},
   {vsn, "@VERSION@"},
-  {modules, [amf, amf0, amf3, 'AbstractMessage', 'AsyncMessage',
-	     'CommandMessage', 'AcknowledgeMessage']},
+  {modules, [amf, amf0, amf3, amf_AbstractMessage, amf_AsyncMessage,
+	     amf_CommandMessage, amf_AcknowledgeMessage]},
   {registered, []},
   {applications, [kernel, stdlib]},
   {env, []}

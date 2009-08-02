@@ -1,3 +1,56 @@
+2009-08-02  Ruslan Babayev  <ruslan@babayev.com>
+
+	* src/amf.erl: Added EDoc tags.
+
+	* src/amf.app.in: Renamed the externalized modules.
+
+	* src/Makefile.am: Added EDoc and EUnit integration.
+
+	* configure.ac: Autogenerate overview.edoc from overview.edoc.in.
+
+	* old.src/AcknowledgeMessage.erl: Renamed...
+	* new.src/amf_AcknowledgeMessage.erl: ...to this.
+	Renamed decode/4 to decode_members/4.
+	Removed amf.hrl include.
+
+	* old.src/CommandMessage.erl: Renamed...
+	* new.src/amf_CommandMessage.erl: ...to this.
+	Renamed decode/4 to decode_members/4.
+	Removed amf.hrl include.
+
+	* old.src/AsyncMessage.erl: Renamed...
+	* new.src/amf_AsyncMessage.erl: ...to this.
+	Renamed decode/4 to decode_members/4.
+	Removed amf.hrl include.
+
+	* old.src/AbstractMessage.erl: Renamed...
+	* new.src/amf_AbstractMessage.erl: ...to this.
+	Renamed decode/4 to decode_members/4.
+	Removed amf.hrl include.
+
+	* src/amf.hrl: Drop amf_object record.
+
+	* src/amf0.erl: Added EDoc tags. Removed amf.hrl include.
+	(decode) <OBJECT>: Replace #amf_object{} with {object, <<>>, Members}.
+	(decode) <TYPEDOBJECT>: Replace #amf_object{} with
+	{object, Class, Members}. 
+	(encode): Replace #amf_object{} with {object, Class, Members}. 
+
+	* src/amf3.erl : Don't include amf.hrl.
+	(decode) <OBJECT>: Replace #amf_object{} with {object, Class, Members}.
+	(decode_assoc): Don't convert the binary Key to atom.
+	(decode_object): Replace Module:decode/4 with Module:decode_members/4.
+	(decode_object): Replace #amf_object{} with {object, Class, Members}.
+	(external_module): Throw more details when Class is unknown.
+	(encode) <ARRAY>: Use lists:partition/2. 
+	(encode) <OBJECT>: Replace #amf_object{} with {object, Class, Members}.
+	Use lists:partition/2 to separate sealed from dynamic members.
+	Throw badmember exception if caught an error.
+	(encode) <BYTEARRAY>: Encode as reference to objects, not strings.
+	(encode) <BadValue>: Throw badval.
+	(encode_uint29): Throw more details with badrange.
+	(encode_assoc): Ensure property is {binary(), any()}. Throw badprop.
+
 2009-07-31  Ruslan Babayev  <ruslan@babayev.com>
 
 	* src/amf3.erl (decode_assoc): Use binary_to_atom/2 BIF.
