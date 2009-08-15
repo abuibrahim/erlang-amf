@@ -1,3 +1,15 @@
+2009-08-15  Ruslan Babayev  <ruslan@babayev.com>
+
+	* src/overview.edoc.in: Doc fixes.
+
+	* src/amf0.erl (decode) <OBJECT>: Convert binary member keys to atoms.
+	(decode) <TYPEDOBJECT>: Convert binary member keys to atoms.
+	(decode_members): Don't convert the binary keys to atoms.
+	(encode) <ECMAARRAY>: Add guard to check whether the name is binary.
+	(encode_members): Don't need to convert the key to binary.
+	(encode) <OBJECT>: Convert atom member keys to binaries.
+	(encode) <TYPEDOBJECT>: Convert atom member keys to binaries.
+
 2009-08-02  Ruslan Babayev  <ruslan@babayev.com>
 
 	* src/amf.erl: Added EDoc tags.

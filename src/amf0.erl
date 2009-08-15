@@ -31,7 +31,7 @@
 %% @type typed_object() = {object, Class::binary(), Members::proplist()}.
 %% @type date() = {date, MilliSecs::float(), TimeZone::integer()}.
 %% @type xmldoc() = {xmldoc, Contents::binary()}.
-%% @type ecma_array() = proplist().
+%% @type ecma_array() = [{binary(), amf0()}].
 %% @type strict_array() = [amf0()].
 %% @type avmplus() = {avmplus, amf3()}.
 %% @type amf0() = float() | bool() | binary() | object() | null |
@@ -53,8 +53,9 @@ decode(<<?STRING, L:16, String:L/binary, Rest/binary>>, Objects) ->
 decode(<<?OBJECT, Data/binary>>, Objects) ->
     Key = gb_trees:size(Objects),
     Objects1 = gb_trees:insert(Key, {ref, Key}, Objects),
-    {Members, Objects2, Rest} = decode_members(Data, [], Objects1),
-    Object = {object, Members},
+    {Members0, Objects2, Rest} = decode_members(Data, [], Objects1),
+    Members1 = [{binary_to_atom(Name, utf8), Val} || {Name, Val} <- Members0],
+    Object = {object, Members1},
     Objects3 = gb_trees:update(Key, Object, Objects2),
     {Object, Rest, Objects3};
 decode(<<?NULL, Rest/binary>>, Objects) ->
@@ -86,8 +87,9 @@ decode(<<?XMLDOCUMENT, L:32, String:L/binary, Rest/binary>>, Objects) ->
 decode(<<?TYPEDOBJECT, L:16, Class:L/binary, Data/binary>>, Objects) ->
     Key = gb_trees:size(Objects),
     Objects1 = gb_trees:insert(Key, {ref, Key}, Objects),
-    {Members, Objects2, Rest} = decode_members(Data, [], Objects1),
-    Object = {object, Class, Members},
+    {Members0, Objects2, Rest} = decode_members(Data, [], Objects1),
+    Members1 = [{binary_to_atom(Name, utf8), Val} || {Name, Val} <- Members0],
+    Object = {object, Class, Members1},
     Objects3 = gb_trees:update(Key, Object, Objects2),
     {Object, Rest, Objects3};
 decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
@@ -98,7 +100,7 @@ decode_members(<<0:16, ?OBJECTEND, Rest/binary>>, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
 decode_members(<<L:16, Key:L/binary, Data/binary>>, Acc, Objects) ->
     {Value, Rest, Objects1} = decode(Data, Objects),
-    decode_members(Rest, [{binary_to_atom(Key, utf8), Value} | Acc], Objects1).
+    decode_members(Rest, [{Key, Value} | Acc], Objects1).
 
 decode_array(0, Rest, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
@@ -143,7 +145,8 @@ encode({object, Members} = Object, Objects) ->
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    {Bin, Objects2} = encode_members(Members, [], Objects1),
+	    Members1 = [{atom_to_binary(N, utf8), V} || {N, V} <- Members],
+	    {Bin, Objects2} = encode_members(Members1, [], Objects1),
 	    {<<?OBJECT, Bin/binary>>, Objects2}
     end;
 encode({object, Class, Members} = Object, Objects) ->
@@ -153,11 +156,12 @@ encode({object, Class, Members} = Object, Objects) ->
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    {Bin, Objects2} = encode_members(Members, [], Objects1),
+	    Members1 = [{atom_to_binary(N, utf8), V} || {N, V} <- Members],
+	    {Bin, Objects2} = encode_members(Members1, [], Objects1),
 	    Bin1 = <<?TYPEDOBJECT, (size(Class)):16, Class/binary,Bin/binary>>,
 	    {Bin1, Objects2}
     end;
-encode([{_Key, _Val} | _] = List, Objects) ->
+encode([{Name, _Val} | _] = List, Objects) when is_binary(Name) ->
     case encode_as_reference(List, gb_trees:iterator(Objects)) of
 	{ok, Bin} ->
 	    {Bin, Objects};
@@ -183,9 +187,8 @@ encode(List, Objects) when is_list(List) ->
 encode_members([], Acc, Objects) ->
     {list_to_binary(lists:reverse([<<0:16, ?OBJECTEND>> | Acc])), Objects};
 encode_members([{Key, Val} | Rest], Acc, Objects) ->
-    KeyBin = atom_to_binary(Key, utf8),
     {ValBin, Objects1} = encode(Val, Objects),
-    Bin = <<(size(KeyBin)):16, KeyBin/binary, ValBin/binary>>,
+    Bin = <<(size(Key)):16, Key/binary, ValBin/binary>>,
     encode_members(Rest, [Bin | Acc], Objects1).
 
 encode_array([], Acc, Objects) ->

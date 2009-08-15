@@ -53,7 +53,7 @@ This library supports both AMF0 and AMF3.
   </tr>
   <tr>
     <td>ECMAArray</td>
-    <td>[{atom(), amf0()}]</td>
+    <td>[{binary(), amf0()}]</td>
   </tr>
   <tr>
     <td>StrictArray</td>
