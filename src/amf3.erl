@@ -79,14 +79,15 @@ decode(<<?ARRAY, Data/binary>>, Strings, Objects, Traits) ->
 	    {Array, Rest, Strings, Objects, Traits}
     catch
 	{inline, Len, Rest} ->
-	    {Associative, Rest1, Strings1, Objects1, Traits1} =
-		decode_assoc(Rest, Strings, Objects, Traits, []),
-	    {Dense, Rest2, Strings2, Objects2, Traits2} =
-		decode_dense(Len, Rest1, Strings1, Objects1, Traits1, []),
+	    Key = gb_trees:size(Objects),
+	    Objects1 = gb_trees:insert(Key, [], Objects),
+	    {Associative, Rest2, Strings2, Objects2, Traits2} =
+		decode_assoc(Rest, Strings, Objects1, Traits, []),
+	    {Dense, Rest3, Strings3, Objects3, Traits3} =
+		decode_dense(Len, Rest2, Strings2, Objects2, Traits2, []),
 	    Array = Associative ++ Dense,
-	    Key = gb_trees:size(Objects2),
-	    Objects3 = gb_trees:insert(Key, Array, Objects2),
-	    {Array, Rest2, Strings2, Objects3, Traits2}
+	    Objects4 = gb_trees:update(Key, Array, Objects3),
+	    {Array, Rest3, Strings3, Objects4, Traits3}
     end;
 decode(<<?OBJECT, Data/binary>>, Strings, Objects, Traits) ->
     try decode_as_reference(Data, Objects) of
