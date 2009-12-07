@@ -1,6 +1,6 @@
 @author Ruslan Babayev <ruslan@babayev.com>
 @copyright 2009 Ruslan Babayev
-@version @VERSION@
+@version 1.0.1
 @title Action Message Format Library.
 @doc This library provides AMF support for Erlang.
 
