@@ -234,7 +234,7 @@ external_module(<<"DSA">>) -> amf_AsyncMessage;
 external_module(<<"DSC">>) -> amf_CommandMessage;
 external_module(<<"DSK">>) -> amf_AcknowledgeMessage;
 external_module(Class) ->
-    throw({?MODULE, ?LINE, unknown_class, Class}).
+    throw({unknown_class, Class}).
 
 %% @doc Serialize Erlang terms into AMF3.
 %% @spec (amf3()) -> binary()
@@ -308,7 +308,7 @@ encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
 		try lists:partition(F, Members)
 		catch
 		    error:function_clause ->
-			throw({?MODULE, ?LINE, badmember})
+			throw(badmember)
 		end,
 	    {SealedKeys, SealedVals} = lists:unzip(SealedMembers),
 	    Trait = #trait{class = Class,
@@ -338,12 +338,14 @@ encode({bytearray, _Bytes} = ByteArray, Strings, Objects, Traits) ->
     {Bin, Objects1} = encode_bytearray(ByteArray, Objects),
     {<<?BYTEARRAY, Bin/binary>>, Strings, Objects1, Traits};
 encode(Value, _Strings, _Objects, _Traits) ->
-    throw({?MODULE, ?LINE, badval, Value}).
+    throw({badval, Value}).
 
 encode_int29(I) when I >= -16#10000000, I < 0 ->
     encode_uint29(16#20000000 + I);
 encode_int29(I) when I =< 16#0FFFFFFF ->
-    encode_uint29(I).
+    encode_uint29(I);
+encode_int29(_) ->
+    throw(badrange).
 
 encode_uint29(I) when I >= 16#00000000, I =< 16#0000007F ->
     <<I>>;
@@ -363,7 +365,7 @@ encode_uint29(I) when I >= 16#00200000, I =< 16#1FFFFFFF ->
     X4 = I band 16#FF,
     <<X1, X2, X3, X4>>;
 encode_uint29(_) ->
-    throw({?MODULE, ?LINE, badrange}).
+    throw(badrange).
 
 encode_string(String, Strings) ->
     try encode_as_reference(String, gb_trees:iterator(Strings)) of
@@ -413,7 +415,7 @@ encode_assoc([], Acc, Strings, Objects, Traits) ->
     Bin = list_to_binary(lists:reverse([EmptyString | Acc])),
     {Bin, Strings, Objects, Traits};
 encode_assoc([Property | _Rest], _Acc, _Strings, _Objects, _Traits) ->
-    throw({?MODULE, ?LINE, badprop, Property}).
+    throw({badprop, Property}).
 
 encode_dense([], Acc, Strings, Objects, Traits) ->
     {list_to_binary(lists:reverse(Acc)), Strings, Objects, Traits};
