@@ -1,6 +1,6 @@
-APP=amf
 ERL=ERL
 ERLC=ERLC
+APP=amf
 
 all: compile
 
@@ -8,7 +8,8 @@ compile:
 	@$(ERL) -make
 
 clean:
-	-@rm -f ebin/*.beam
+	@echo "removing:"
+	@rm -fv ebin/*.beam
 
 docs:
 	@$(ERL) -noshell -run edoc_run application '$(APP)' '"."' '[]'
