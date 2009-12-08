@@ -102,3 +102,83 @@ encode_string_refs_test_() ->
 encode_dates_refs_test_() ->
     ?_assertEncode(<<9,7,1,8,1,0.0:64/big-float,8,1,1.0:64/big-float,8,2>>,
 		   [{date,0.0,0},{date,1.0,0},{date,0.0,0}]).
+
+encode_object_string_refs_test() ->
+    ?_assertEncode(<<9,5,1,10,3,15,"MyClass",10,11,0,0,4,0,1>>,
+		   [{object,<<"MyClass">>,[]},
+		    {object,<<"MyClass">>,[{<<"MyClass">>,0}]}]).
+
+codec_undefined_test() ->
+    ?_assertCodec(undefined).
+
+codec_null_test() ->
+    ?_assertCodec(null).
+
+codec_false_test() ->
+    ?_assertCodec(false).
+
+codec_true_test() ->
+    ?_assertCodec(true).
+
+codec_integers_test_() ->
+    [?_assertCodec(-1 bsl 28),
+     ?_assertCodec(-2),
+     ?_assertCodec(-1),
+     ?_assertCodec(0),
+     ?_assertCodec(1),
+     ?_assertCodec(2),
+     ?_assertCodec(1 bsl 7 - 1),
+     ?_assertCodec(1 bsl 7),
+     ?_assertCodec(1 bsl 14 - 1),
+     ?_assertCodec(1 bsl 14),
+     ?_assertCodec(1 bsl 21 - 1),
+     ?_assertCodec(1 bsl 21),
+     ?_assertCodec(1 bsl 28 - 1)].
+
+codec_doubles_test_() ->
+    [?_assertCodec(-1.0e308),
+     ?_assertCodec(-1.0),
+     ?_assertCodec(0.0),
+     ?_assertCodec(1.0),
+     ?_assertCodec(1.0e308)].
+
+codec_strings_test_() ->
+    [?_assertCodec(<<"small string">>),
+     ?_assertCodec(list_to_binary(string:copies("big", 500))),
+     ?_assertCodec([<<"string a">>,<<"string b">>,<<"string a">>])].
+
+codec_arrays_test_() ->
+    [?_assertCodec([]),
+     ?_assertCodec([1]),
+     ?_assertCodec([1,2,3]),
+     ?_assertCodec([<<"foo">>,<<"foo">>,<<"bar">>,<<"foo">>])].
+
+codec_large_array_test() ->
+    ?_assertCodec(string:copies([<<"large array">>], 500)).
+
+codec_xml_test() ->
+    ?_assertCodec({xml,<<"<xml><abc/></xml>">>}).
+
+codec_xml_refs_test() ->
+    ?_assertCodec([1,{xml,<<"<xml/>">>},2,{xml,<<"<xml/>">>}]).
+
+codec_dates_test_() ->
+    [?_assertCodec({date,0.0,0}),
+     ?_assertCodec({date,1736428493.9421,0}),
+     ?_assertCodec([{date,0.0,0},{date,1.0,0},{date,0.0,0}])].
+
+codec_objects_test_() ->
+    [?_assertCodec({object,<<>>,[]}),
+     ?_assertCodec({object,<<"MyClass">>,[]}),
+     ?_assertCodec({object,<<"MyClass">>,
+		    [{static1,1},{static2,2},
+		     {<<"dynamic1">>,1},{<<"dynamic2">>,2}]}),
+     ?_assertCodec({object,<<"MyClass">>,
+		    [{list_to_binary("p" ++ integer_to_list(I)),I} ||
+			I <- lists:seq(1,1000)]})].
+
+codec_object_refs_test_() ->
+    ?_assertCodec([{object,<<"MyClass">>,[]},
+		   {object,<<"MyClass">>,[]},
+		   {object,<<"MyClass">>,
+		    [{a,{object,<<"MyClass">>,[]}}]}]).
