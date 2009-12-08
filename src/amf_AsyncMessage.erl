@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc AsyncMessage Deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf_AsyncMessage).
+-author('ruslan@babayev.com').
+
 -export([decode_members/4]).
 
 -define(CORRELATION_ID,         1).

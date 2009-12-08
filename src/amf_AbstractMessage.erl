@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc AbstractMessage Deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf_AbstractMessage).
+-author('ruslan@babayev.com').
+
 -export([decode_members/4,
 	 decode_members/6,
 	 decode_flag_bytes/1,

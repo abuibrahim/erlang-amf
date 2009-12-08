@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc AcknowledgeMessage Deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf_AcknowledgeMessage).
+-author('ruslan@babayev.com').
+
 -export([decode_members/4]).
 
 -define(IS_SET(Byte, Flag), ((Byte) band Flag) == Flag).

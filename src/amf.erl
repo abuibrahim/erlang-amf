@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc AMF serialization/deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf).
+-author('ruslan@babayev.com').
+
 -export([encode_packet/1, decode_packet/1]).
 
 -include("amf.hrl").

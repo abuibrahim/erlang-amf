@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc AMF0 serialization/deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf0).
+-author('ruslan@babayev.com').
+
 -export([encode/1, decode/1]).
 
 -define(NUMBER,        16#00).

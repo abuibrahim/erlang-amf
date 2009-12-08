@@ -1,10 +1,10 @@
-%%-------------------------------------------------------------------
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009, Ruslan Babayev.
 %% @doc CommandMessage Deserialization.
-%% @end
-%%-------------------------------------------------------------------
+
 -module(amf_CommandMessage).
+-author('ruslan@babayev.com').
+
 -export([decode_members/4]).
 
 -define(OPERATION,   1).
