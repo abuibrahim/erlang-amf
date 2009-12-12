@@ -1,5 +1,5 @@
 %% @author Ruslan Babayev <ruslan@babayev.com>
-%% @copyright 2009, Ruslan Babayev.
+%% @copyright 2009 Ruslan Babayev
 %% @doc AMF3 serialization/deserialization.
 
 -module(amf3).

@@ -1,5 +1,5 @@
 %% @author Ruslan Babayev <ruslan@babayev.com>
-%% @copyright 2009, Ruslan Babayev.
+%% @copyright 2009 Ruslan Babayev
 %% @doc AMF0 unit tests.
 
 -module(amf0_tests).
