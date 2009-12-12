@@ -29,8 +29,8 @@
 %% @type array() = [{Key::binary(), Value::amf3()} | amf3()].
 %% @type bytearray() = {bytearray, Bytes::binary()}.
 %% @type amf3() = undefined | null | false | true | integer() |
-%%       double() | binary() | xmldoc() | date() | array() |
-%%       object() | xml() | bytearray().
+%%                double() | binary() | xmldoc() | date() | array() |
+%%                object() | xml() | bytearray().
 
 -record(trait, {class, is_dynamic, is_externalizable, property_names}).
 
