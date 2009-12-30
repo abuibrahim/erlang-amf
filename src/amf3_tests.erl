@@ -10,26 +10,32 @@
 %% Assert that a value encodes as specified.
 -define(_assertEncode(Encoding, Value),
 	?_assertMatch(Encoding, amf3:encode(Value))).
+-define(assertEncode(Encoding, Value),
+	?assertMatch(Encoding, amf3:encode(Value))).
 
 %% Assert that a binary decodes as specified.
 -define(_assertDecode(Value, Encoded),
 	?_assertMatch({Value,<<>>}, amf3:decode(Encoded))).
+-define(assertDecode(Value, Encoded),
+	?assertMatch({Value,<<>>}, amf3:decode(Encoded))).
 
 %% Assert that an encoded value decodes back to itself.
 -define(_assertCodec(E),
 	?LET(V, E, ?_assertEqual(V, element(1, amf3:decode(amf3:encode(V)))))).
+-define(assertCodec(E),
+	?LET(V, E, ?assertEqual(V, element(1, amf3:decode(amf3:encode(V)))))).
 
 encode_undefined_test() ->
-    ?_assertEncode(<<0>>, undefined).
+    ?assertEncode(<<0>>, undefined).
 
 encode_null_test() ->
-    ?_assertEncode(<<1>>, null).
+    ?assertEncode(<<1>>, null).
 
 encode_false_test() ->
-    ?_assertEncode(<<2>>, false).
+    ?assertEncode(<<2>>, false).
 
 encode_true_test() ->
-    ?_assertEncode(<<3>>, true).
+    ?assertEncode(<<3>>, true).
 
 encode_integers_test_() ->
     [?_assertEncode(<<4,192,128,128,0>>, -1 bsl 28),
@@ -99,26 +105,26 @@ encode_string_refs_test_() ->
 		    [<<"abcdef">>,<<"test">>,<<>>,<<"abcdef">>,
 		     <<"test">>,<<>>])].
 
-encode_dates_refs_test_() ->
-    ?_assertEncode(<<9,7,1,8,1,0.0:64/big-float,8,1,1.0:64/big-float,8,2>>,
-		   [{date,0.0,0},{date,1.0,0},{date,0.0,0}]).
+encode_dates_refs_test() ->
+    ?assertEncode(<<9,7,1,8,1,0.0:64/big-float,8,1,1.0:64/big-float,8,2>>,
+		  [{date,0.0,0},{date,1.0,0},{date,0.0,0}]).
 
 encode_object_string_refs_test() ->
-    ?_assertEncode(<<9,5,1,10,3,15,"MyClass",10,11,0,0,4,0,1>>,
-		   [{object,<<"MyClass">>,[]},
-		    {object,<<"MyClass">>,[{<<"MyClass">>,0}]}]).
+    ?assertEncode(<<9,5,1,10,3,15,"MyClass",10,11,0,0,4,0,1>>,
+		  [{object,<<"MyClass">>,[]},
+		   {object,<<"MyClass">>,[{<<"MyClass">>,0}]}]).
 
 codec_undefined_test() ->
-    ?_assertCodec(undefined).
+    ?assertCodec(undefined).
 
 codec_null_test() ->
-    ?_assertCodec(null).
+    ?assertCodec(null).
 
 codec_false_test() ->
-    ?_assertCodec(false).
+    ?assertCodec(false).
 
 codec_true_test() ->
-    ?_assertCodec(true).
+    ?assertCodec(true).
 
 codec_integers_test_() ->
     [?_assertCodec(-1 bsl 28),
@@ -154,13 +160,13 @@ codec_arrays_test_() ->
      ?_assertCodec([<<"foo">>,<<"foo">>,<<"bar">>,<<"foo">>])].
 
 codec_large_array_test() ->
-    ?_assertCodec(string:copies([<<"large array">>], 500)).
+    ?assertCodec(string:copies([<<"large array">>], 500)).
 
 codec_xml_test() ->
-    ?_assertCodec({xml,<<"<xml><abc/></xml>">>}).
+    ?assertCodec({xml,<<"<xml><abc/></xml>">>}).
 
 codec_xml_refs_test() ->
-    ?_assertCodec([1,{xml,<<"<xml/>">>},2,{xml,<<"<xml/>">>}]).
+    ?assertCodec([1,{xml,<<"<xml/>">>},2,{xml,<<"<xml/>">>}]).
 
 codec_dates_test_() ->
     [?_assertCodec({date,0.0,0}),
@@ -177,8 +183,8 @@ codec_objects_test_() ->
 		    [{list_to_binary("p" ++ integer_to_list(I)),I} ||
 			I <- lists:seq(1,1000)]})].
 
-codec_object_refs_test_() ->
-    ?_assertCodec([{object,<<"MyClass">>,[]},
-		   {object,<<"MyClass">>,[]},
-		   {object,<<"MyClass">>,
-		    [{a,{object,<<"MyClass">>,[]}}]}]).
+codec_object_refs_test() ->
+    ?assertCodec([{object,<<"MyClass">>,[]},
+		  {object,<<"MyClass">>,[]},
+		  {object,<<"MyClass">>,
+		   [{a,{object,<<"MyClass">>,[]}}]}]).
