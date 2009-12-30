@@ -94,7 +94,7 @@ decode(<<?TYPEDOBJECT, L:16, Class:L/binary, Data/binary>>, Objects) ->
     {Object, Rest, Objects3};
 decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
     {AVMPlusObject, Rest} = amf3:decode(Data),
-    {AVMPlusObject, Rest, Objects}.
+    {{avmplus, AVMPlusObject}, Rest, Objects}.
 
 decode_members(<<0:16, ?OBJECTEND, Rest/binary>>, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
