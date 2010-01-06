@@ -1,6 +1,6 @@
-%% @author Ruslan Babayev <ruslan@babayev.com>
+% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009 Ruslan Babayev
-%% @doc AMF0 serialization/deserialization.
+%% @doc AMF0 Encoding and Decoding.
 
 -module(amf0).
 -author('ruslan@babayev.com').
@@ -26,9 +26,9 @@
 -define(TYPEDOBJECT,   16#10).
 -define(AVMPLUSOBJECT, 16#11).
 
-%% @type proplist() = [{atom(), amf0()}].
-%% @type object() = {object, Members::proplist()}.
-%% @type typed_object() = {object, Class::binary(), Members::proplist()}.
+%% @type members() = [{atom(), amf0()}].
+%% @type object() = {object, members()}.
+%% @type typed_object() = {object, Class::binary(), members()}.
 %% @type date() = {date, MilliSecs::float(), TimeZone::integer()}.
 %% @type xmldoc() = {xmldoc, Contents::binary()}.
 %% @type ecma_array() = [{binary(), amf0()}].
@@ -37,13 +37,17 @@
 %% @type amf0() = float() | bool() | binary() | object() | null |
 %%       undefined | ecma_array() | strict_array() | date() |
 %%       typed_object() | xmldoc() | avmplus().
+%% @type refs() = //stdlib/gb_trees:gb_tree()
 
-%% @doc Deserialize Erlang terms from AMF0.
-%% @spec (binary()) -> {amf0(), Rest::binary()}
-decode(Data) ->
-    {AMF, Rest, _Objects} = decode(Data, gb_trees:empty()),
+%% @doc Decodes a value.
+%% @spec decode(binary()) -> {Value::amf0(), Rest::binary()}
+decode(Bytes) ->
+    {AMF, Rest, _Objects} = decode(Bytes, gb_trees:empty()),
     {AMF, Rest}.
 
+%% @doc Decodes a value.
+%% @spec decode(Bytes::binary(), Objects) -> {Value::amf0(), Rest, Objects}
+%%       Objects = refs()
 decode(<<?NUMBER, Number:64/float, Rest/binary>>, Objects) ->
     {Number, Rest, Objects};
 decode(<<?BOOL, Bool, Rest/binary>>, Objects) ->
@@ -96,24 +100,36 @@ decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
     {AVMPlusObject, Rest} = amf3:decode(Data),
     {{avmplus, AVMPlusObject}, Rest, Objects}.
 
+%% @doc Decodes Object, Typed Object and ECMA Array members.
+%% @spec decode_members(binary(), Acc, Objects) -> {members(), Objects, Rest}
+%%       Objects = refs()
+%%       Rest = binary()
 decode_members(<<0:16, ?OBJECTEND, Rest/binary>>, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
 decode_members(<<L:16, Key:L/binary, Data/binary>>, Acc, Objects) ->
     {Value, Rest, Objects1} = decode(Data, Objects),
     decode_members(Rest, [{Key, Value} | Acc], Objects1).
 
+%% @doc Decodes a Strict Array.
+%% @spec decode_array(Size, Data, Acc, Objects) -> {Array, Objects, Rest}
+%%       Array = strict_array()
+%%       Objects = refs()
+%%       Rest = binary()
 decode_array(0, Rest, Acc, Objects) ->
     {lists:reverse(Acc), Objects, Rest};
 decode_array(Size, Data, Acc, Objects) ->
     {Element, Rest, Objects1} = decode(Data, Objects),
     decode_array(Size - 1, Rest, [Element | Acc], Objects1). 
 
-%% @doc Serialize Erlang terms into AMF0.
-%% @spec (amf0()) -> binary()
-encode(AMF0) ->
-    {Bin, _Objects} = encode(AMF0, gb_trees:empty()),
+%% @doc Encodes a value.
+%% @spec encode(amf0()) -> binary()
+encode(Value) ->
+    {Bin, _Objects} = encode(Value, gb_trees:empty()),
     Bin.
 
+%% @doc Encodes a value.
+%% @spec encode(Value::amf0(), Objects) -> {binary(), Objects}
+%%       Objects = refs()
 encode({avmplus, Object}, Objects) ->
     Bin = amf3:encode(Object),
     {<<?AVMPLUSOBJECT, Bin/binary>>, Objects};
@@ -146,7 +162,7 @@ encode({object, Members} = Object, Objects) ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
 	    Members1 = [{atom_to_binary(N, utf8), V} || {N, V} <- Members],
-	    {Bin, Objects2} = encode_members(Members1, [], Objects1),
+	    {Bin, Objects2} = encode_members(Members1, <<>>, Objects1),
 	    {<<?OBJECT, Bin/binary>>, Objects2}
     end;
 encode({object, Class, Members} = Object, Objects) ->
@@ -157,7 +173,7 @@ encode({object, Class, Members} = Object, Objects) ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, Object, Objects),
 	    Members1 = [{atom_to_binary(N, utf8), V} || {N, V} <- Members],
-	    {Bin, Objects2} = encode_members(Members1, [], Objects1),
+	    {Bin, Objects2} = encode_members(Members1, <<>>, Objects1),
 	    Bin1 = <<?TYPEDOBJECT, (size(Class)):16, Class/binary,Bin/binary>>,
 	    {Bin1, Objects2}
     end;
@@ -168,7 +184,7 @@ encode([{Name, _Val} | _] = List, Objects) when is_binary(Name) ->
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, List, Objects),
-	    {Bin, Objects2} = encode_members(List, [], Objects1),
+	    {Bin, Objects2} = encode_members(List, <<>>, Objects1),
 	    Bin1 = <<?ECMAARRAY, (length(List)):32, Bin/binary>>,
 	    {Bin1, Objects2}
     end;
@@ -179,24 +195,32 @@ encode(List, Objects) when is_list(List) ->
 	inline ->
 	    Key = gb_trees:size(Objects),
 	    Objects1 = gb_trees:insert(Key, List, Objects),
-	    {Bin, Objects2} = encode_array(List, [], Objects1),
+	    {Bin, Objects2} = encode_array(List, <<>>, Objects1),
 	    Bin1 = <<?STRICTARRAY, (length(List)):32, Bin/binary>>,
 	    {Bin1, Objects2}
     end.
 
+%% @doc Encodes Object, Typed Object and ECMA Array members.
+%% @spec encode_members(Members, binary(), Objects) -> {binary(), Objects}
+%%       Objects = refs()
 encode_members([], Acc, Objects) ->
-    {list_to_binary(lists:reverse([<<0:16, ?OBJECTEND>> | Acc])), Objects};
+    {<<Acc/binary, 0:16, ?OBJECTEND>>, Objects};
 encode_members([{Key, Val} | Rest], Acc, Objects) ->
     {ValBin, Objects1} = encode(Val, Objects),
     Bin = <<(size(Key)):16, Key/binary, ValBin/binary>>,
-    encode_members(Rest, [Bin | Acc], Objects1).
+    encode_members(Rest, <<Acc/binary, Bin/binary>>, Objects1).
 
+%% @doc Encodes a Strict Array.
+%% @spec encode_array(Elements, binary(), Objects) -> {binary(), Objects}
+%%       Objects = refs()
 encode_array([], Acc, Objects) ->
-    {list_to_binary(lists:reverse(Acc)), Objects};
+    {Acc, Objects};
 encode_array([Element | Rest], Acc, Objects) ->
     {Bin, Objects1} = encode(Element, Objects),
-    encode_array(Rest, [Bin | Acc], Objects1).
+    encode_array(Rest, <<Acc/binary, Bin/binary>>, Objects1).
 
+%% @doc Encodes a value as reference if it is found in Objects table.
+%% @spec encode_as_reference(amf0(), Iterator) -> inline | {ok, binary()}
 encode_as_reference(_Value, []) ->
     inline;
 encode_as_reference(Value, Iterator0) ->

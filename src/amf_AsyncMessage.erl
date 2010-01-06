@@ -1,6 +1,6 @@
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009 Ruslan Babayev
-%% @doc AsyncMessage Deserialization.
+%% @doc AsyncMessage Decoding.
 
 -module(amf_AsyncMessage).
 -author('ruslan@babayev.com').
@@ -13,6 +13,14 @@
 -define(IS_SET(Byte, Flag), ((Byte) band Flag) == Flag).
 -define(CLEAR(Byte, Flag), ((Byte) band bnot Flag)).
 
+%% @doc Decodes members.
+%% @spec decode_members(binary(), Strings, Objects, Traits) ->
+%%       {Members, Rest, Strings, Objects, Traits}
+%%       Members = amf3:members()
+%%       Rest = binary()
+%%       Strings = amf3:refs()
+%%       Objects = amf3:refs()
+%%       Traits = amf3:refs()
 decode_members(Data, Strings, Objects, Traits) ->
     {AbstractMessageMembers, Rest, Strings1, Objects1, Traits1} =
 	amf_AbstractMessage:decode_members(Data, Strings, Objects, Traits),
@@ -24,9 +32,14 @@ decode_members(Data, Strings, Objects, Traits) ->
     Members = AbstractMessageMembers ++ AsyncMessageMembers,
     {Members, Rest2, Strings2, Objects2, Traits2}.
 
+%% @doc Decodes flags.
+%% @spec decode_flags(Flags::[integer()]) -> [correlationId | ignored]
 decode_flags([B]) ->
     decode_flags1(B, []).
 
+%% @doc Decodes flags.
+%% @spec decode_flags1(Byte::integer(), [integer()]) ->
+%%       [correlationId | ignored]
 decode_flags1(0, Acc) ->
     lists:reverse(Acc);
 decode_flags1(B, Acc) when ?IS_SET(B, ?CORRELATION_ID) ->

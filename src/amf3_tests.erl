@@ -1,6 +1,7 @@
 %% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009 Ruslan Babayev
 %% @doc AMF3 unit tests.
+%% @hidden
 
 -module(amf3_tests).
 -author('ruslan@babayev.com').
@@ -56,8 +57,8 @@ encode_integers_test_() ->
      ?_assertEncode(<<4,191,255,255,255>>, 1 bsl 28 - 1)].
 
 encode_large_integers_test_() ->
-    [?_assertThrow(badrange, amf3:encode(1 bsl 28)),
-     ?_assertThrow(badrange, amf3:encode(-1 bsl 28 - 1))].
+    [?_assertThrow({bad_range, _}, amf3:encode(1 bsl 28)),
+     ?_assertThrow({bad_range, _}, amf3:encode(-1 bsl 28 - 1))].
 
 encode_doubles_test_() ->
     [?_assertEncode(<<5,-1.0e300:64/big-float>>, -1.0e300),

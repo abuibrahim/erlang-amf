@@ -52,11 +52,11 @@ This library supports both AMF0 and AMF3.
     <td>undefined</td>
   </tr>
   <tr>
-    <td>ECMAArray</td>
+    <td>ECMA Array</td>
     <td>[{binary(), amf0()}]</td>
   </tr>
   <tr>
-    <td>StrictArray</td>
+    <td>Strict Array</td>
     <td>[amf0()]</td>
   </tr>
   <tr>
@@ -64,7 +64,7 @@ This library supports both AMF0 and AMF3.
     <td>{date, MilliSecs::float(), TimeZone::integer()}</td>
   </tr>
   <tr>
-    <td>LongString</td>
+    <td>Long String</td>
     <td>binary()</td>
   </tr>
   <tr>
@@ -72,11 +72,11 @@ This library supports both AMF0 and AMF3.
     <td>unsupported</td>
   </tr>
   <tr>
-    <td>XMLDocument</td>
+    <td>XML Document</td>
     <td>{xmldoc, Contents::binary()}</td>
   </tr>
   <tr>
-    <td>TypedObject</td>
+    <td>Typed Object</td>
     <td>{object, ClassName::binary(), Members::[{atom(), amf0()}]}</td>
   </tr>
   <tr>
@@ -118,7 +118,7 @@ This library supports both AMF0 and AMF3.
     <td>binary()</td>
   </tr>
   <tr>
-    <td>XMLDocument</td>
+    <td>XML Document</td>
     <td>{xmldoc, binary()}</td>
   </tr>
   <tr>
@@ -138,7 +138,7 @@ This library supports both AMF0 and AMF3.
     <td>{xml, binary()}</td>
   </tr>
   <tr>
-    <td>ByteArray</td>
+    <td>Byte Array</td>
     <td>{bytearray, binary()}</td>
   </tr>
 </table>
