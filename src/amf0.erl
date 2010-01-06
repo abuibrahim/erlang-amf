@@ -35,8 +35,8 @@
 %% @type strict_array() = [amf0()].
 %% @type avmplus() = {avmplus, amf3()}.
 %% @type amf0() = float() | bool() | binary() | object() | null |
-%%       undefined | ecma_array() | strict_array() | date() |
-%%       typed_object() | xmldoc() | avmplus().
+%%                undefined | ecma_array() | strict_array() | date() |
+%%                typed_object() | xmldoc() | avmplus().
 %% @type refs() = //stdlib/gb_trees:gb_tree()
 
 %% @doc Decodes a value.
