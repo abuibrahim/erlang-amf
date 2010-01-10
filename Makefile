@@ -1,5 +1,5 @@
-ERL=ERL
-ERLC=ERLC
+ERL=erl
+ERLC=erlc
 APP=amf
 
 all: compile
