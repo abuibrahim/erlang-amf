@@ -287,109 +287,68 @@ external_module(Name) ->
 
 %% @doc Encodes a value.
 %% @spec encode(Value::amf3()) -> binary()
-encode(AMF3) ->
-    Empty = gb_trees:empty(),
-    {Bin, _Strings, _Objects, _Traits} = encode(AMF3, Empty, Empty, Empty),
-    Bin.
-
-%% @doc Encodes a value.
-%% @spec encode(Value::amf3(), Strings, Objects, Traits) ->
-%%       {binary(), Strings, Objects, Traits}
-%%       Strings = refs()
-%%       Objects = refs()
-%%       Traits = refs()
 %% @throws {bad_range, term()} | bad_member | {bad_property, term()}
-encode(undefined, Strings, Objects, Traits) ->
-    {<<?UNDEFINED>>, Strings, Objects, Traits};
-encode(null, Strings, Objects, Traits) ->
-    {<<?NULL>>, Strings, Objects, Traits};
-encode(false, Strings, Objects, Traits) ->
-    {<<?FALSE>>, Strings, Objects, Traits};
-encode(true, Strings, Objects, Traits) ->
-    {<<?TRUE>>, Strings, Objects, Traits};
-encode(Integer, Strings, Objects, Traits) when is_integer(Integer) ->
+encode(undefined) ->
+    <<?UNDEFINED>>;
+encode(null) ->
+    <<?NULL>>;
+encode(false) ->
+    <<?FALSE>>;
+encode(true) ->
+    <<?TRUE>>;
+encode(Integer) when is_integer(Integer) ->
     Bin = encode_int29(Integer),
-    {<<?INTEGER, Bin/binary>>, Strings, Objects, Traits};
-encode(Double, Strings, Objects, Traits) when is_float(Double) ->
-    {<<?DOUBLE, Double/float>>, Strings, Objects, Traits};
-encode(String, Strings, Objects, Traits) when is_binary(String) ->
-    {Bin, Strings1} = encode_string(String, Strings),
-    {<<?STRING, Bin/binary>>, Strings1, Objects, Traits};
-encode({xmldoc, String}, Strings, Objects, Traits) ->
-    {Bin, Strings1} = encode_string(String, Strings),
-    {<<?XMLDOC, Bin/binary>>, Strings1, Objects, Traits};
-encode({date, TS, TZ}, Strings, Objects, Traits) ->
-    case encode_by_reference({date, TS, TZ}, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?DATE, Bin/binary>>, Strings, Objects, Traits};
-	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, {date, TS, TZ}, Objects),
-	    {<<?DATE, 1, TS:64/float>>, Strings, Objects1, Traits}
-    end;
-encode(Array, Strings, Objects, Traits) when is_list(Array) ->
-    case encode_by_reference(Array, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?ARRAY, Bin/binary>>, Strings, Objects, Traits};
-	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, Array, Objects),
-	    F = fun({K, _V}) when is_binary(K) -> true;
-		   (_V) -> false
-		end,
-	    {AssocList, DenseList} = lists:partition(F, Array),
-	    {AssocBin, Strings2, Objects2, Traits2} =
-		encode_assoc(AssocList, <<>>, Strings, Objects1, Traits),
-	    DenseLen = encode_uint29(length(DenseList) bsl 1 bor 1),
-	    {DenseBin, Strings3, Objects3, Traits3} =
-		encode_dense(DenseList, <<>>, Strings2, Objects2, Traits2),
-	    Bin = <<?ARRAY, DenseLen/binary, AssocBin/binary,
-		   DenseBin/binary>>,
-	    {Bin, Strings3, Objects3, Traits3}
-    end;
-encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
-    case encode_by_reference(Object, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {<<?OBJECT, Bin/binary>>, Strings, Objects, Traits};
-	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, Object, Objects),
-	    F = fun({K, _}) when is_atom(K)   -> true;
-		   ({K, _}) when is_binary(K) -> false
-		end,
-	    {SealedMembers, DynamicMembers} =
-		try lists:partition(F, Members)
-		catch
-		    error:function_clause ->
-			throw(bad_member)
-		end,
-	    {SealedKeys, SealedVals} = lists:unzip(SealedMembers),
-	    Trait = #trait{class = Class,
-			   is_dynamic = (length(DynamicMembers) > 0),
-			   is_externalizable = false, % TODO: handle ext
-			   property_names = SealedKeys
-			  },
-	    {TraitBin, Strings1, Traits1} =
-		encode_trait(Trait, Strings, Traits),
-	    {Sealed, Strings2, Objects2, Traits2} =
-		encode_dense(SealedVals, <<>>, Strings1, Objects1, Traits1),
-	    {Dynamic, Strings3, Objects3, Traits3} =	    
-		case Trait#trait.is_dynamic of
-		    true ->
-			encode_assoc(DynamicMembers, <<>>,
-				     Strings2, Objects2, Traits2);
-		    false ->
-			{<<>>, Strings2, Objects2, Traits2}
-		end,
-	    Bin = <<?OBJECT, TraitBin/binary, Sealed/binary, Dynamic/binary>>,
-	    {Bin, Strings3, Objects3, Traits3}
-    end;
-encode({xml, String}, Strings, Objects, Traits) ->
-    {Bin, Strings1} = encode_string(String, Strings),
-    {<<?XML, Bin/binary>>, Strings1, Objects, Traits};
-encode({bytearray, _Bytes} = ByteArray, Strings, Objects, Traits) ->
-    {Bin, Objects1} = encode_bytearray(ByteArray, Objects),
-    {<<?BYTEARRAY, Bin/binary>>, Strings, Objects1, Traits}.
+    <<?INTEGER, Bin/binary>>;
+encode(Double) when is_float(Double) ->
+    <<?DOUBLE, Double/float>>;
+encode(String) when is_binary(String) ->
+    Bin = encode_string(String),
+    <<?STRING, Bin/binary>>;
+encode({xmldoc, String}) ->
+    Bin = encode_string(String),
+    <<?XMLDOC, Bin/binary>>;
+encode({date, TS, _TZ}) ->
+    <<?DATE, 1, TS:64/float>>;
+encode(Array) when is_list(Array) ->
+    F = fun({K, _V}) when is_binary(K) -> true;
+	   (_V) -> false
+	end,
+    {AssocList, DenseList} = lists:partition(F, Array),
+    AssocBin = encode_assoc(AssocList, <<>>),
+    DenseLen = encode_uint29(length(DenseList) bsl 1 bor 1),
+    DenseBin = encode_dense(DenseList, <<>>),
+    <<?ARRAY, DenseLen/binary, AssocBin/binary, DenseBin/binary>>;
+encode({object, Class, Members}) ->
+    F = fun({K, _}) when is_atom(K)   -> true;
+	   ({K, _}) when is_binary(K) -> false
+	end,
+    {SealedMembers, DynamicMembers} =
+	try lists:partition(F, Members)
+	catch
+	    error:function_clause ->
+		throw(bad_member)
+	end,
+    {SealedKeys, SealedVals} = lists:unzip(SealedMembers),
+    Trait = #trait{class = Class,
+		   is_dynamic = (length(DynamicMembers) > 0),
+		   is_externalizable = false, % TODO: handle ext
+		   property_names = SealedKeys
+		  },
+    TraitBin = encode_trait(Trait),
+    Sealed = encode_dense(SealedVals, <<>>),
+    Dynamic = case Trait#trait.is_dynamic of
+		  true ->
+		      encode_assoc(DynamicMembers, <<>>);
+		  false ->
+		      <<>>
+	      end,
+    <<?OBJECT, TraitBin/binary, Sealed/binary, Dynamic/binary>>;
+encode({xml, String}) ->
+    Bin = encode_string(String),
+    <<?XML, Bin/binary>>;
+encode({bytearray, _Bytes} = ByteArray) ->
+    Bin = encode_bytearray(ByteArray),
+    <<?BYTEARRAY, Bin/binary>>.
 
 %% @doc Encodes a signed 29-bit Integer.
 %% @spec encode_int29(integer()) -> binary()
@@ -423,125 +382,70 @@ encode_uint29(I) ->
     throw({bad_range, I}).
 
 %% @doc Encodes a String.
-%% @spec encode_string(binary(), refs()) -> {binary(), refs()}
-encode_string(String, Strings) ->
-    case encode_by_reference(String, gb_trees:iterator(Strings)) of
-	{ok, Bin} ->
-	    {Bin, Strings};
-	{error, not_found} ->
-	    Strings1 = insert_string(String, Strings),
-	    Ref = encode_uint29(size(String) bsl 1 bor 1),
-	    {<<Ref/binary, String/binary>>, Strings1}
-    end.
+%% @spec encode_string(binary()) -> binary()
+encode_string(String) ->
+    Ref = encode_uint29(size(String) bsl 1 bor 1),
+    <<Ref/binary, String/binary>>.
 
 %% @doc Encodes a Byte Array.
-%% @spec encode_bytearray(bytearray(), refs()) -> {binary(), refs()}
-encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
-    case encode_by_reference(ByteArray, gb_trees:iterator(Objects)) of
-	{ok, Bin} ->
-	    {Bin, Objects};
-	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, ByteArray, Objects),
-	    Ref = encode_uint29(size(Bytes) bsl 1 bor 1),
-	    {<<Ref/binary, Bytes/binary>>, Objects1}
-    end.
-
-%% @doc Encodes a value by reference.
-%% @spec encode_by_reference(amf3(), term()) ->
-%%       {ok, binary()} | {error, not_found}
-encode_by_reference(Value, Iterator0) ->
-    case gb_trees:next(Iterator0) of
-	{Key, Value, _} when is_record(Value, trait) ->
-	    %% Obj is inline, Trait is a 27bit reference.
-	    {ok, encode_uint29(Key bsl 2 bor 1)};
-	{Key, Value, _} ->
-	    {ok, encode_uint29(Key bsl 1)};
-	{_, _, Iterator1} ->
-	    encode_by_reference(Value, Iterator1);
-	none ->
-	    {error, not_found}
-    end.
+%% @spec encode_bytearray(bytearray()) -> binary()
+encode_bytearray({bytearray, Bytes}) ->
+    Ref = encode_uint29(size(Bytes) bsl 1 bor 1),
+    <<Ref/binary, Bytes/binary>>.
 
 %% @doc Encodes the associative portion of Arrays and Objects.
-%% @spec encode_assoc(Elements, binary(), Strings, Objects, Traits) ->
-%%       {binary(), Strings, Objects, Traits}
+%% @spec encode_assoc(Elements, binary()) -> binary()
 %%       Elements = [{binary(), amf3()}]
-%%       Strings = refs()
-%%       Objects = refs()
-%%       Traits = refs()
-encode_assoc([{Key, Value} | Rest], Acc, Strings, Objects, Traits)
-  when is_binary(Key) ->
-    {KeyBin, Strings1} = encode_string(Key, Strings),
-    {ValBin, Strings2, Objects2, Traits2} =
-	encode(Value, Strings1, Objects, Traits),
+encode_assoc([{Key, Value} | Rest], Acc) when is_binary(Key) ->
+    KeyBin = encode_string(Key),
+    ValBin = encode(Value),
     Acc1 = <<Acc/binary, KeyBin/binary, ValBin/binary>>,
-    encode_assoc(Rest, Acc1, Strings2, Objects2, Traits2);
-encode_assoc([], Acc, Strings, Objects, Traits) ->
-    {EmptyString, _} = encode_string(<<>>, Strings),
-    {<<Acc/binary, EmptyString/binary>>, Strings, Objects, Traits};
-encode_assoc([Property | _Rest], _Acc, _Strings, _Objects, _Traits) ->
+    encode_assoc(Rest, Acc1);
+encode_assoc([], Acc) ->
+    EmptyString = encode_string(<<>>),
+    <<Acc/binary, EmptyString/binary>>;
+encode_assoc([Property | _Rest], _Acc) ->
     throw({bad_property, Property}).
 
 %% @doc Encodes the dense portion of Arrays and Objects.
-%% @spec encode_dense(Elements, binary(), Strings, Objects, Traits) ->
-%%       {binary(), Strings, Objects, Traits}
+%% @spec encode_dense(Elements, binary()) -> binary()
 %%       Elements = [amf3()]
-%%       Strings = refs()
-%%       Objects = refs()
-%%       Traits = refs()
-encode_dense([], Acc, Strings, Objects, Traits) ->
-    {Acc, Strings, Objects, Traits};
-encode_dense([Element | Rest], Acc, Strings, Objects, Traits) ->
-    {Bin, Strings1, Objects1, Traits1} =
-	encode(Element, Strings, Objects, Traits),
-    encode_dense(Rest, <<Acc/binary, Bin/binary>>,
-		 Strings1, Objects1, Traits1).
+encode_dense([], Acc) ->
+    Acc;
+encode_dense([Element | Rest], Acc) ->
+    Bin = encode(Element),
+    encode_dense(Rest, <<Acc/binary, Bin/binary>>).
 
 %% @doc Encodes an Object trait.
-%% @spec encode_trait(#trait{}, Strings, Traits) -> {binary(), Strings, Traits}
-%%       Strings = refs()
-%%       Traits = refs()
-encode_trait(Trait, Strings, Traits) ->
-    case encode_by_reference(Trait, gb_trees:iterator(Traits)) of
-	{ok, Bin} ->
-	    {Bin, Strings, Traits};
-	{error, not_found} ->
-	    Key = gb_trees:size(Traits),
-	    Traits1 = gb_trees:insert(Key, Trait, Traits),
-	    {Class, Strings1} = encode_string(Trait#trait.class, Strings),
-	    Ref0 = length(Trait#trait.property_names) bsl 4,
-	    Ref1 = Ref0 bor 2#011, % non-ext, trait-inline, obj-inline
-	    Ref2 = case Trait#trait.is_dynamic of
-		       true ->
-			   Ref1 bor 2#1000;
-		       false ->
-			   Ref1
-		   end,
-	    RefBin = encode_uint29(Ref2),
-	    {PropNames, Strings2} =
-		encode_atoms_as_strings(Trait#trait.property_names, Strings1),
-	    Bin = <<RefBin/binary, Class/binary, PropNames/binary>>,
-	    {Bin, Strings2, Traits1}
-    end.
+%% @spec encode_trait(#trait{}) -> binary()
+encode_trait(Trait) ->
+    Class = encode_string(Trait#trait.class),
+    Ref0 = length(Trait#trait.property_names) bsl 4,
+    Ref1 = Ref0 bor 2#011, % non-ext, trait-inline, obj-inline
+    Ref2 = case Trait#trait.is_dynamic of
+	       true ->
+		   Ref1 bor 2#1000;
+	       false ->
+		   Ref1
+	   end,
+    RefBin = encode_uint29(Ref2),
+    PropNames =	encode_atoms_as_strings(Trait#trait.property_names),
+    <<RefBin/binary, Class/binary, PropNames/binary>>.
 
 %% @doc Encodes a list of atoms as Strings.
-%% @spec encode_atoms_as_strings(Atoms, Strings) -> {binary(), Strings}
+%% @spec encode_atoms_as_strings(Atoms) -> binary()
 %%       Atoms = [atom()]
-%%       Strings = refs()
-encode_atoms_as_strings(Atoms, Strings) ->
-    encode_atoms_as_strings(Atoms, <<>>, Strings).
+encode_atoms_as_strings(Atoms) ->
+    encode_atoms_as_strings(Atoms, <<>>).
 
 %% @doc Encodes a list of atoms as Strings.
-%% @spec encode_atoms_as_strings(Atoms, binary(), Strings) ->
-%%       {binary(), Strings}
+%% @spec encode_atoms_as_strings(Atoms, binary()) -> binary()
 %%       Atoms = [atom()]
-%%       Strings = refs()
-encode_atoms_as_strings([], Acc, Strings) ->
-    {Acc, Strings};
-encode_atoms_as_strings([Atom | Rest], Acc, Strings) ->
-    {Bin, Strings1} = encode_string(atom_to_binary(Atom, utf8), Strings),
-    encode_atoms_as_strings(Rest, <<Acc/binary, Bin/binary>>, Strings1).
+encode_atoms_as_strings([], Acc) ->
+    Acc;
+encode_atoms_as_strings([Atom | Rest], Acc) ->
+    Bin = encode_string(atom_to_binary(Atom, utf8)),
+    encode_atoms_as_strings(Rest, <<Acc/binary, Bin/binary>>).
 
 %% @doc Inserts String into the reference table unless String is empty.
 %%      Note, empty Strings are never sent by reference.

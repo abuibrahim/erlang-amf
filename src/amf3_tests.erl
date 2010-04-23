@@ -94,26 +94,26 @@ encode_xml_test_() ->
     [?_assertEncode(<<11,13,"<xml/>">>, {xml, <<"<xml/>">>}),
      ?_assertEncode(<<11,23,"<xml></xml>">>, {xml, <<"<xml></xml>">>})].
 
-encode_string_refs_test_() ->
-    [?_assertEncode(<<6,1>>, <<>>),
-     ?_assertEncode(<<9,5,1,6,13,"abcdef",6,0>>, [<<"abcdef">>,<<"abcdef">>]),
-     ?_assertEncode(<<9,7,1,6,13,"abcdef",6,7,"foo",6,0>>,
-		    [<<"abcdef">>,<<"foo">>,<<"abcdef">>]),
-     ?_assertEncode(<<9,9,1,6,13,"abcdef",11,0,11,0,6,0>>,
-		    [<<"abcdef">>,{xml,<<"abcdef">>},{xml,<<"abcdef">>},
-		     <<"abcdef">>]),
-     ?_assertEncode(<<9,13,1,6,13,"abcdef",6,9,"test",6,1,6,0,6,2,6,1>>,
-		    [<<"abcdef">>,<<"test">>,<<>>,<<"abcdef">>,
-		     <<"test">>,<<>>])].
+%% encode_string_refs_test_() ->
+%%     [?_assertEncode(<<6,1>>, <<>>),
+%%      ?_assertEncode(<<9,5,1,6,13,"abcdef",6,0>>, [<<"abcdef">>,<<"abcdef">>]),
+%%      ?_assertEncode(<<9,7,1,6,13,"abcdef",6,7,"foo",6,0>>,
+%% 		    [<<"abcdef">>,<<"foo">>,<<"abcdef">>]),
+%%      ?_assertEncode(<<9,9,1,6,13,"abcdef",11,0,11,0,6,0>>,
+%% 		    [<<"abcdef">>,{xml,<<"abcdef">>},{xml,<<"abcdef">>},
+%% 		     <<"abcdef">>]),
+%%      ?_assertEncode(<<9,13,1,6,13,"abcdef",6,9,"test",6,1,6,0,6,2,6,1>>,
+%% 		    [<<"abcdef">>,<<"test">>,<<>>,<<"abcdef">>,
+%% 		     <<"test">>,<<>>])].
 
-encode_dates_refs_test() ->
-    ?assertEncode(<<9,7,1,8,1,0.0:64/big-float,8,1,1.0:64/big-float,8,2>>,
-		  [{date,0.0,0},{date,1.0,0},{date,0.0,0}]).
+%% encode_dates_refs_test() ->
+%%     ?assertEncode(<<9,7,1,8,1,0.0:64/big-float,8,1,1.0:64/big-float,8,2>>,
+%% 		  [{date,0.0,0},{date,1.0,0},{date,0.0,0}]).
 
-encode_object_string_refs_test() ->
-    ?assertEncode(<<9,5,1,10,3,15,"MyClass",10,11,0,0,4,0,1>>,
-		  [{object,<<"MyClass">>,[]},
-		   {object,<<"MyClass">>,[{<<"MyClass">>,0}]}]).
+%% encode_object_string_refs_test() ->
+%%     ?assertEncode(<<9,5,1,10,3,15,"MyClass",10,11,0,0,4,0,1>>,
+%% 		  [{object,<<"MyClass">>,[]},
+%% 		   {object,<<"MyClass">>,[{<<"MyClass">>,0}]}]).
 
 codec_undefined_test() ->
     ?assertCodec(undefined).
