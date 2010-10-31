@@ -5,7 +5,7 @@
 -module(amf3).
 -author('ruslan@babayev.com').
 
--export([encode/1, decode/1]).
+-export([encode/1, decode/1, decode/4]).
 
 -define(UNDEFINED, 16#00).
 -define(NULL,      16#01).
