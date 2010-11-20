@@ -1,4 +1,4 @@
-% @author Ruslan Babayev <ruslan@babayev.com>
+%% @author Ruslan Babayev <ruslan@babayev.com>
 %% @copyright 2009 Ruslan Babayev
 %% @doc AMF0 Encoding and Decoding.
 
@@ -26,6 +26,10 @@
 -define(TYPEDOBJECT,   16#10).
 -define(AVMPLUSOBJECT, 16#11).
 
+-define(POS_INFINITY, <<16#7F,16#F0,0,0,0,0,0,0>>).
+-define(NEG_INFINITY, <<16#FF,16#F0,0,0,0,0,0,0>>).
+-define(NAN,          <<16#FF,16#F8,0,0,0,0,0,0>>).
+
 %% @type members() = [{atom(), amf0()}].
 %% @type object() = {object, members()}.
 %% @type typed_object() = {object, Class::binary(), members()}.
@@ -34,7 +38,8 @@
 %% @type ecma_array() = [{binary(), amf0()}].
 %% @type strict_array() = [amf0()].
 %% @type avmplus() = {avmplus, amf3()}.
-%% @type amf0() = float() | bool() | binary() | object() | null |
+%% @type double() = float() | pos_infinity | neg_infinity | nan.
+%% @type amf0() = double() | bool() | binary() | object() | null |
 %%                undefined | ecma_array() | strict_array() | date() |
 %%                typed_object() | xmldoc() | avmplus().
 %% @type refs() = //stdlib/gb_trees:gb_tree()
@@ -48,8 +53,8 @@ decode(Bytes) ->
 %% @doc Decodes a value.
 %% @spec decode(Bytes::binary(), Objects) -> {Value::amf0(), Rest, Objects}
 %%       Objects = refs()
-decode(<<?NUMBER, Number:64/float, Rest/binary>>, Objects) ->
-    {Number, Rest, Objects};
+decode(<<?NUMBER, Data:8/binary, Rest/binary>>, Objects) ->
+    {decode_double(Data), Rest, Objects};
 decode(<<?BOOL, Bool, Rest/binary>>, Objects) ->
     {(Bool /= 0), Rest, Objects};
 decode(<<?STRING, L:16, String:L/binary, Rest/binary>>, Objects) ->
@@ -100,6 +105,13 @@ decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
     {AVMPlusObject, Rest} = amf3:decode(Data),
     {{avmplus, AVMPlusObject}, Rest, Objects}.
 
+%% @doc Decodes IEEE-754 double precision floating-point number.
+%% @spec decode_double(binary()) -> double()
+decode_double(?POS_INFINITY)    -> pos_infinity;
+decode_double(?NEG_INFINITY)    -> neg_infinity;
+decode_double(?NAN)             -> nan;
+decode_double(<<Num:64/float>>) -> Num.
+
 %% @doc Decodes Object, Typed Object and ECMA Array members.
 %% @spec decode_members(binary(), Acc, Objects) -> {members(), Objects, Rest}
 %%       Objects = refs()
@@ -133,6 +145,12 @@ encode(Value) ->
 encode({avmplus, Object}, Objects) ->
     Bin = amf3:encode(Object),
     {<<?AVMPLUSOBJECT, Bin/binary>>, Objects};
+encode(pos_infinity, Objects) ->
+    {<<?NUMBER, ?POS_INFINITY/binary>>, Objects};
+encode(neg_infinity, Objects) ->
+    {<<?NUMBER, ?NEG_INFINITY/binary>>, Objects};
+encode(nan, Objects) ->
+    {<<?NUMBER, ?NAN/binary>>, Objects};
 encode(Number, Objects) when is_number(Number) ->
     {<<?NUMBER, Number:64/float>>, Objects};
 encode(true, Objects) ->

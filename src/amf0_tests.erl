@@ -31,7 +31,10 @@ encode_numbers_test_() ->
      ?_assertEncode(<<0,1.0:64/big-float>>, 1),
      ?_assertEncode(<<0,-1.0:64/big-float>>, -1),
      ?_assertEncode(<<0,0.0:64/big-float>>, 0.0),
-     ?_assertEncode(<<0,-7.5:64/big-float>>, -7.5)].
+     ?_assertEncode(<<0,-7.5:64/big-float>>, -7.5),
+     ?_assertEncode(<<0,16#7F,16#F0,0,0,0,0,0,0>>, pos_infinity),
+     ?_assertEncode(<<0,16#FF,16#F0,0,0,0,0,0,0>>, neg_infinity),
+     ?_assertEncode(<<0,16#FF,16#F8,0,0,0,0,0,0>>, nan)].
 
 encode_booleans_test_() ->
     [?_assertEncode(<<1,0>>, false),

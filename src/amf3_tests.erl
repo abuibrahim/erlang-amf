@@ -66,7 +66,10 @@ encode_doubles_test_() ->
      ?_assertEncode(<<5,0.0:64/big-float>>, 0.0),
      ?_assertEncode(<<5,1.0:64/big-float>>, 1.0),
      ?_assertEncode(<<5,1234.56:64/big-float>>, 1234.56),
-     ?_assertEncode(<<5,1.0e300:64/big-float>>, 1.0e300)].
+     ?_assertEncode(<<5,1.0e300:64/big-float>>, 1.0e300),
+     ?_assertEncode(<<5,16#7F,16#F0,0,0,0,0,0,0>>, pos_infinity),
+     ?_assertEncode(<<5,16#FF,16#F0,0,0,0,0,0,0>>, neg_infinity),
+     ?_assertEncode(<<5,16#FF,16#F8,0,0,0,0,0,0>>, nan)].
 
 encode_strings_test_() ->
     [?_assertEncode(<<6,151,57,"bigbigbig",_/binary>>,
