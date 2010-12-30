@@ -26,9 +26,11 @@
 -define(TYPEDOBJECT,   16#10).
 -define(AVMPLUSOBJECT, 16#11).
 
--define(POS_INFINITY, <<16#7F,16#F0,0,0,0,0,0,0>>).
--define(NEG_INFINITY, <<16#FF,16#F0,0,0,0,0,0,0>>).
--define(NAN,          <<16#FF,16#F8,0,0,0,0,0,0>>).
+%% IEEE 754 special values
+-define(POS_INFINITY, <<0:1,16#7FF:11,0:52>>).
+-define(NEG_INFINITY, <<1:1,16#7FF:11,0:52>>).
+-define(QNAN,         <<0:1,16#7FF:11,1:1,0:51>>).
+-define(SNAN,         <<0:1,16#7FF:11,0:1,1:51>>).
 
 %% @type members() = [{atom(), amf0()}].
 %% @type object() = {object, members()}.
@@ -38,7 +40,7 @@
 %% @type ecma_array() = [{binary(), amf0()}].
 %% @type strict_array() = [amf0()].
 %% @type avmplus() = {avmplus, amf3()}.
-%% @type double() = float() | pos_infinity | neg_infinity | nan.
+%% @type double() = float() | '+infinity' | '-infinity' | 'qNan' | 'sNaN'.
 %% @type amf0() = double() | bool() | binary() | object() | null |
 %%                undefined | ecma_array() | strict_array() | date() |
 %%                typed_object() | xmldoc() | avmplus().
@@ -107,10 +109,11 @@ decode(<<?AVMPLUSOBJECT, Data/binary>>, Objects) ->
 
 %% @doc Decodes IEEE-754 double precision floating-point number.
 %% @spec decode_double(binary()) -> double()
-decode_double(?POS_INFINITY)    -> pos_infinity;
-decode_double(?NEG_INFINITY)    -> neg_infinity;
-decode_double(?NAN)             -> nan;
-decode_double(<<Num:64/float>>) -> Num.
+decode_double(?POS_INFINITY)              -> '+infinity';
+decode_double(?NEG_INFINITY)              -> '-infinity';
+decode_double(<<_:1,16#7FF:11,1:1,_:51>>) -> 'qNaN';
+decode_double(<<_:1,16#7FF:11,0:1,_:51>>) -> 'sNaN';
+decode_double(<<Num:64/float>>)           -> Num.
 
 %% @doc Decodes Object, Typed Object and ECMA Array members.
 %% @spec decode_members(binary(), Acc, Objects) -> {members(), Objects, Rest}
@@ -145,12 +148,14 @@ encode(Value) ->
 encode({avmplus, Object}, Objects) ->
     Bin = amf3:encode(Object),
     {<<?AVMPLUSOBJECT, Bin/binary>>, Objects};
-encode(pos_infinity, Objects) ->
+encode('+infinity', Objects) ->
     {<<?NUMBER, ?POS_INFINITY/binary>>, Objects};
-encode(neg_infinity, Objects) ->
+encode('-infinity', Objects) ->
     {<<?NUMBER, ?NEG_INFINITY/binary>>, Objects};
-encode(nan, Objects) ->
-    {<<?NUMBER, ?NAN/binary>>, Objects};
+encode('qNaN', Objects) ->
+    {<<?NUMBER, ?QNAN/binary>>, Objects};
+encode('sNaN', Objects) ->
+    {<<?NUMBER, ?SNAN/binary>>, Objects};
 encode(Number, Objects) when is_number(Number) ->
     {<<?NUMBER, Number:64/float>>, Objects};
 encode(true, Objects) ->

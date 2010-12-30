@@ -21,9 +21,11 @@
 -define(XML,       16#0B).
 -define(BYTEARRAY, 16#0C).
 
--define(POS_INFINITY, <<16#7F,16#F0,0,0,0,0,0,0>>).
--define(NEG_INFINITY, <<16#FF,16#F0,0,0,0,0,0,0>>).
--define(NAN,          <<16#FF,16#F8,0,0,0,0,0,0>>).
+%% IEEE 754 special values
+-define(POS_INFINITY, <<0:1,16#7FF:11,0:52>>).
+-define(NEG_INFINITY, <<1:1,16#7FF:11,0:52>>).
+-define(QNAN,         <<0:1,16#7FF:11,1:1,0:51>>).
+-define(SNAN,         <<0:1,16#7FF:11,0:1,1:51>>).
 
 %% @type members() = [{atom() | binary(), amf3()}].
 %% @type object() = {object, Class::binary(), members()}.
@@ -32,7 +34,7 @@
 %% @type xml() = {xml, Contents::binary()}.
 %% @type array() = [{Key::binary(), Value::amf3()} | amf3()].
 %% @type bytearray() = {bytearray, Bytes::binary()}.
-%% @type double() = float() | pos_infinity | neg_infinity | nan.
+%% @type double() = float() | '+infinity' | '-infinity' | 'qNaN' | 'sNaN'.
 %% @type amf3() = undefined | null | false | true | integer() |
 %%                double() | binary() | xmldoc() | date() | array() |
 %%                object() | xml() | bytearray().
@@ -123,10 +125,11 @@ decode(<<?BYTEARRAY, Data/binary>>, Strings, Objects, Traits) ->
 
 %% @doc Decodes IEEE-754 double precision floating-point number.
 %% @spec decode_double(binary()) -> double()
-decode_double(?POS_INFINITY)    -> pos_infinity;
-decode_double(?NEG_INFINITY)    -> neg_infinity;
-decode_double(?NAN)             -> nan;
-decode_double(<<Num:64/float>>) -> Num.
+decode_double(?POS_INFINITY)              -> '+infinity';
+decode_double(?NEG_INFINITY)              -> '-infinity';
+decode_double(<<_:1,16#7FF:11,1:1,_:51>>) -> 'qNaN';
+decode_double(<<_:1,16#7FF:11,0:1,_:51>>) -> 'sNaN';
+decode_double(<<Num:64/float>>)           -> Num.
 
 %% @doc Decodes a value stored by reference.
 %% @spec decode_by_reference(binary(), Tree::refs()) ->
@@ -322,12 +325,14 @@ encode(true, Strings, Objects, Traits) ->
 encode(Integer, Strings, Objects, Traits) when is_integer(Integer) ->
     Bin = encode_int29(Integer),
     {<<?INTEGER, Bin/binary>>, Strings, Objects, Traits};
-encode(pos_infinity, Strings, Objects, Traits) ->
+encode('+infinity', Strings, Objects, Traits) ->
     {<<?DOUBLE, ?POS_INFINITY/binary>>, Strings, Objects, Traits};
-encode(neg_infinity, Strings, Objects, Traits) ->
+encode('-infinity', Strings, Objects, Traits) ->
     {<<?DOUBLE, ?NEG_INFINITY/binary>>, Strings, Objects, Traits};
-encode(nan, Strings, Objects, Traits) ->
-    {<<?DOUBLE, ?NAN/binary>>, Strings, Objects, Traits};
+encode('qNaN', Strings, Objects, Traits) ->
+    {<<?DOUBLE, ?QNAN/binary>>, Strings, Objects, Traits};
+encode('sNaN', Strings, Objects, Traits) ->
+    {<<?DOUBLE, ?SNAN/binary>>, Strings, Objects, Traits};
 encode(Double, Strings, Objects, Traits) when is_float(Double) ->
     {<<?DOUBLE, Double/float>>, Strings, Objects, Traits};
 encode(String, Strings, Objects, Traits) when is_binary(String) ->

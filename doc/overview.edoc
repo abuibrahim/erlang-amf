@@ -29,7 +29,7 @@ This library supports both AMF0 and AMF3.
   <th>Erlang</th>
   <tr>
     <td>Number</td>
-    <td>float() | pos_infinity | neg_infinity | nan</td>
+    <td>float() | '+infinity' | '-infinity' | 'qNaN' | 'sNaN'</td>
   </tr>
   <tr>
     <td>Bool</td>
@@ -111,7 +111,7 @@ This library supports both AMF0 and AMF3.
   </tr>
   <tr>
     <td>Double</td>
-    <td>float() | pos_infinity | neg_infinity | nan</td>
+    <td>float() | '+infinity' | '-infinity' | 'qNaN' | 'sNaN'</td>
   </tr>
   <tr>
     <td>String</td>

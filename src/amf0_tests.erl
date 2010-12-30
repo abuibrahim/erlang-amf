@@ -32,9 +32,10 @@ encode_numbers_test_() ->
      ?_assertEncode(<<0,-1.0:64/big-float>>, -1),
      ?_assertEncode(<<0,0.0:64/big-float>>, 0.0),
      ?_assertEncode(<<0,-7.5:64/big-float>>, -7.5),
-     ?_assertEncode(<<0,16#7F,16#F0,0,0,0,0,0,0>>, pos_infinity),
-     ?_assertEncode(<<0,16#FF,16#F0,0,0,0,0,0,0>>, neg_infinity),
-     ?_assertEncode(<<0,16#FF,16#F8,0,0,0,0,0,0>>, nan)].
+     ?_assertEncode(<<0,0:1,16#7FF:11,0:52>>, '+infinity'),
+     ?_assertEncode(<<0,1:1,16#7FF:11,0:52>>, '-infinity'),
+     ?_assertEncode(<<0,0:1,16#7FF:11,1:1,0:51>>, 'qNaN'),
+     ?_assertEncode(<<0,0:1,16#7FF:11,0:1,1:51>>, 'sNaN')].
 
 encode_booleans_test_() ->
     [?_assertEncode(<<1,0>>, false),
