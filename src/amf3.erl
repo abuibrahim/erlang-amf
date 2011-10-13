@@ -298,7 +298,10 @@ external_module(<<"DSA">>) -> amf_AsyncMessage;
 external_module(<<"DSC">>) -> amf_CommandMessage;
 external_module(<<"DSK">>) -> amf_AcknowledgeMessage;
 external_module(Name) ->
-    throw({unknown_externalized_class, Name}).
+    case application:get_env(amf_mapper) of
+        undefined -> throw({unknown_externalized_class, Name});
+        {ok, AmfMapper} -> AmfMapper:get_mapping(Name)
+    end.
 
 %% @doc Encodes a value.
 %% @spec encode(Value::amf3()) -> binary()
