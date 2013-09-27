@@ -322,6 +322,10 @@ encode(false, Strings, Objects, Traits) ->
     {<<?FALSE>>, Strings, Objects, Traits};
 encode(true, Strings, Objects, Traits) ->
     {<<?TRUE>>, Strings, Objects, Traits};
+encode(Integer, Strings, Objects, Traits) when is_integer(Integer) andalso Integer < -16#10000000 ->
+    {<<?DOUBLE, Integer/float>>, Strings, Objects, Traits};
+encode(Integer, Strings, Objects, Traits) when is_integer(Integer) andalso Integer > 16#0FFFFFFF ->
+    {<<?DOUBLE, Integer/float>>, Strings, Objects, Traits};
 encode(Integer, Strings, Objects, Traits) when is_integer(Integer) ->
     Bin = encode_int29(Integer),
     {<<?INTEGER, Bin/binary>>, Strings, Objects, Traits};
@@ -335,6 +339,8 @@ encode('sNaN', Strings, Objects, Traits) ->
     {<<?DOUBLE, ?SNAN/binary>>, Strings, Objects, Traits};
 encode(Double, Strings, Objects, Traits) when is_float(Double) ->
     {<<?DOUBLE, Double/float>>, Strings, Objects, Traits};
+encode(String, Strings, Objects, Traits) when is_atom(String) ->
+    encode(atom_to_binary(String, latin1), Strings, Objects, Traits);
 encode(String, Strings, Objects, Traits) when is_binary(String) ->
     {Bin, Strings1} = encode_string(String, Strings),
     {<<?STRING, Bin/binary>>, Strings1, Objects, Traits};
