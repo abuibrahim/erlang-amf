@@ -62,7 +62,7 @@ encode_integers_test_() ->
 %%      ?_assertThrow({bad_range, _}, amf3:encode(-1 bsl 28 - 1))].
 
 encode_large_integers_test_() ->
-    [?_assertEncode(<<5,268435456:64/float>>, 268435456),
+    [?_assertEncode(<<5,268435456:64/float>>, 1 bsl 28),
      ?_assertEncode(<<5,-268435457:64/float>>, -1 bsl 28 - 1)].
 
 encode_doubles_test_() ->
