@@ -322,6 +322,10 @@ encode(false, Strings, Objects, Traits) ->
     {<<?FALSE>>, Strings, Objects, Traits};
 encode(true, Strings, Objects, Traits) ->
     {<<?TRUE>>, Strings, Objects, Traits};
+encode(Integer, Strings, Objects, Traits) when is_integer(Integer) andalso Integer < -16#10000000 ->
+    {<<?DOUBLE, Integer/float>>, Strings, Objects, Traits};
+encode(Integer, Strings, Objects, Traits) when is_integer(Integer) andalso Integer > 16#0FFFFFFF ->
+    {<<?DOUBLE, Integer/float>>, Strings, Objects, Traits};
 encode(Integer, Strings, Objects, Traits) when is_integer(Integer) ->
     Bin = encode_int29(Integer),
     {<<?INTEGER, Bin/binary>>, Strings, Objects, Traits};
@@ -335,6 +339,8 @@ encode('sNaN', Strings, Objects, Traits) ->
     {<<?DOUBLE, ?SNAN/binary>>, Strings, Objects, Traits};
 encode(Double, Strings, Objects, Traits) when is_float(Double) ->
     {<<?DOUBLE, Double/float>>, Strings, Objects, Traits};
+encode(String, Strings, Objects, Traits) when is_atom(String) ->
+    encode(atom_to_binary(String, latin1), Strings, Objects, Traits);
 encode(String, Strings, Objects, Traits) when is_binary(String) ->
     {Bin, Strings1} = encode_string(String, Strings),
     {<<?STRING, Bin/binary>>, Strings1, Objects, Traits};
@@ -346,8 +352,8 @@ encode({date, TS, TZ}, Strings, Objects, Traits) ->
 	{ok, Bin} ->
 	    {<<?DATE, Bin/binary>>, Strings, Objects, Traits};
 	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, {date, TS, TZ}, Objects),
+%% 	    Key = gb_trees:size(Objects),
+	    Objects1 = Objects,% gb_trees:insert(Key, {date, TS, TZ}, Objects),
 	    {<<?DATE, 1, TS:64/float>>, Strings, Objects1, Traits}
     end;
 encode(Array, Strings, Objects, Traits) when is_list(Array) ->
@@ -355,8 +361,8 @@ encode(Array, Strings, Objects, Traits) when is_list(Array) ->
 	{ok, Bin} ->
 	    {<<?ARRAY, Bin/binary>>, Strings, Objects, Traits};
 	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, Array, Objects),
+%% 	    Key = gb_trees:size(Objects),
+	    Objects1 = Objects,% gb_trees:insert(Key, Array, Objects),
 	    F = fun({K, _V}) when is_binary(K) -> true;
 		   (_V) -> false
 		end,
@@ -375,8 +381,8 @@ encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
 	{ok, Bin} ->
 	    {<<?OBJECT, Bin/binary>>, Strings, Objects, Traits};
 	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, Object, Objects),
+%% 	    Key = gb_trees:size(Objects),
+	    Objects1 = Objects,% gb_trees:insert(Key, Object, Objects),
 	    F = fun({K, _}) when is_atom(K)   -> true;
 		   ({K, _}) when is_binary(K) -> false
 		end,
@@ -464,8 +470,8 @@ encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
 	{ok, Bin} ->
 	    {Bin, Objects};
 	{error, not_found} ->
-	    Key = gb_trees:size(Objects),
-	    Objects1 = gb_trees:insert(Key, ByteArray, Objects),
+%% 	    Key = gb_trees:size(Objects),
+	    Objects1 = Objects,% gb_trees:insert(Key, ByteArray, Objects),
 	    Ref = encode_uint29(size(Bytes) bsl 1 bor 1),
 	    {<<Ref/binary, Bytes/binary>>, Objects1}
     end.
@@ -476,13 +482,14 @@ encode_bytearray({bytearray, Bytes} = ByteArray, Objects) ->
 encode_by_reference(Value, Iterator0) ->
     case gb_trees:next(Iterator0) of
 	{Key, Value, _} when is_record(Value, trait) ->
-	    %% Obj is inline, Trait is a 27bit reference.
+%% 	    Obj is inline, Trait is a 27bit reference.
 	    {ok, encode_uint29(Key bsl 2 bor 1)};
 	{Key, Value, _} ->
 	    {ok, encode_uint29(Key bsl 1)};
-	{_, _, Iterator1} ->
-	    encode_by_reference(Value, Iterator1);
-	none ->
+%% 	{_, _, Iterator1} ->
+%% 	    encode_by_reference(Value, Iterator1);
+%% 	none ->
+    _ ->
 	    {error, not_found}
     end.
 
@@ -572,4 +579,4 @@ encode_atoms_as_strings([Atom | Rest], Acc, Strings) ->
 insert_string(<<>>, Strings) ->
     Strings;
 insert_string(String, Strings) ->
-    gb_trees:insert(gb_trees:size(Strings), String, Strings).
+   Strings.% gb_trees:insert(gb_trees:size(Strings), String, Strings).

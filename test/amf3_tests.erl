@@ -56,9 +56,14 @@ encode_integers_test_() ->
      ?_assertEncode(<<4,128,192,128,1>>, 1 bsl 21 + 1),
      ?_assertEncode(<<4,191,255,255,255>>, 1 bsl 28 - 1)].
 
+%% convert large integers to float automatically
+%% encode_large_integers_test_() ->
+%%     [?_assertEncode({bad_range, _}, amf3:encode(1 bsl 28)),
+%%      ?_assertThrow({bad_range, _}, amf3:encode(-1 bsl 28 - 1))].
+
 encode_large_integers_test_() ->
-    [?_assertThrow({bad_range, _}, amf3:encode(1 bsl 28)),
-     ?_assertThrow({bad_range, _}, amf3:encode(-1 bsl 28 - 1))].
+    [?_assertEncode(<<5,268435456:64/float>>, 1 bsl 28),
+     ?_assertEncode(<<5,-268435457:64/float>>, -1 bsl 28 - 1)].
 
 encode_doubles_test_() ->
     [?_assertEncode(<<5,-1.0e300:64/big-float>>, -1.0e300),
@@ -71,6 +76,10 @@ encode_doubles_test_() ->
      ?_assertEncode(<<5,1:1,16#7FF:11,0:52>>, '-infinity'),
      ?_assertEncode(<<5,0:1,16#7FF:11,1:1,0:51>>, 'qNaN'),
      ?_assertEncode(<<5,0:1,16#7FF:11,0:1,1:51>>, 'sNaN')].
+
+%% convert atoms to bitstring
+encode_atoms_test_() ->
+    [?_assertEncode(<<6,13,"string">>, string)].
 
 encode_strings_test_() ->
     [?_assertEncode(<<6,151,57,"bigbigbig",_/binary>>,
