@@ -274,7 +274,7 @@ decode_object(Trait, Data, Strings, Objects, Traits)
 	    Module = external_module(Class),
 	    {Members, Rest, Strings1, Objects1, Traits1} =
 		Module:decode_members(Data, Strings, Objects, Traits),
-	    {{object, Class, Members}, Rest, Strings1, Objects1, Traits1}
+	    {{external, Class, Members}, Rest, Strings1, Objects1, Traits1}
     end;
 decode_object(Trait, Data, Strings, Objects, Traits) ->
     Len = length(Trait#trait.property_names),
@@ -298,7 +298,10 @@ external_module(<<"DSA">>) -> amf_AsyncMessage;
 external_module(<<"DSC">>) -> amf_CommandMessage;
 external_module(<<"DSK">>) -> amf_AcknowledgeMessage;
 external_module(Name) ->
-    throw({unknown_externalized_class, Name}).
+    case application:get_env(amf_mapper) of
+        undefined -> throw({unknown_externalized_class, Name});
+        {ok, AmfMapper} -> AmfMapper:get_mapping(Name)
+    end.
 
 %% @doc Encodes a value.
 %% @spec encode(Value::amf3()) -> binary()
@@ -389,7 +392,7 @@ encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
 	    {SealedKeys, SealedVals} = lists:unzip(SealedMembers),
 	    Trait = #trait{class = Class,
 			   is_dynamic = (length(DynamicMembers) > 0),
-			   is_externalizable = false, % TODO: handle ext
+			   is_externalizable = false,
 			   property_names = SealedKeys
 			  },
 	    {TraitBin, Strings1, Traits1} =
@@ -407,6 +410,21 @@ encode({object, Class, Members} = Object, Strings, Objects, Traits) ->
 	    Bin = <<?OBJECT, TraitBin/binary, Sealed/binary, Dynamic/binary>>,
 	    {Bin, Strings3, Objects3, Traits3}
     end;
+encode({external, Class, Members} = Object, Strings, Objects, Traits) ->
+  Key = gb_trees:size(Objects),
+  Objects1 = gb_trees:insert(Key, Object, Objects),
+  Trait = #trait{class = Class,
+    is_dynamic = false,
+    is_externalizable = true,
+    property_names = []
+  },
+  {TraitBin, Strings1, Traits1} =
+    encode_trait(Trait, Strings, Traits, true),
+  {Ordered, Strings2, Objects2, Traits2} =
+    encode_dense(Members, <<>>, Strings1, Objects1, Traits1),
+  Bin = <<?OBJECT, TraitBin/binary, Ordered/binary>>,
+  {Bin, Strings2, Objects2, Traits2};
+
 encode({xml, String}, Strings, Objects, Traits) ->
     {Bin, Strings1} = encode_string(String, Strings),
     {<<?XML, Bin/binary>>, Strings1, Objects, Traits};
@@ -525,7 +543,9 @@ encode_dense([Element | Rest], Acc, Strings, Objects, Traits) ->
 %% @spec encode_trait(#trait{}, Strings, Traits) -> {binary(), Strings, Traits}
 %%       Strings = refs()
 %%       Traits = refs()
-encode_trait(Trait, Strings, Traits) ->
+encode_trait(Trait, Strings, Traits) -> encode_trait(Trait, Strings, Traits, false).
+
+encode_trait(Trait, Strings, Traits, External) ->
     case encode_by_reference(Trait, gb_trees:iterator(Traits)) of
 	{ok, Bin} ->
 	    {Bin, Strings, Traits};
@@ -534,7 +554,10 @@ encode_trait(Trait, Strings, Traits) ->
 	    Traits1 = gb_trees:insert(Key, Trait, Traits),
 	    {Class, Strings1} = encode_string(Trait#trait.class, Strings),
 	    Ref0 = length(Trait#trait.property_names) bsl 4,
-	    Ref1 = Ref0 bor 2#011, % non-ext, trait-inline, obj-inline
+	    Ref1 = case External of
+	      true -> Ref0 bor 2#111; % non-ext, trait-inline, obj-inline
+	      false -> Ref0 bor 2#011 % ext, trait-inline, obj-inline
+      end,
 	    Ref2 = case Trait#trait.is_dynamic of
 		       true ->
 			   Ref1 bor 2#1000;
